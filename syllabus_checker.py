@@ -4402,6 +4402,46 @@ Be generous - if content relates to the topic, include it in "found"."""
             shd.set(_qn('w:fill'),  hex_color.upper())
             pPr.append(shd)
 
+        def add_hyperlink(para, text, url):
+            """Insert a live, clickable hyperlink run into a paragraph."""
+            r_id = para.part.relate_to(
+                url,
+                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
+                is_external=True,
+            )
+            hl = OxmlElement('w:hyperlink')
+            hl.set(qn('r:id'), r_id)
+            r = OxmlElement('w:r')
+            rPr = OxmlElement('w:rPr')
+            rStyle = OxmlElement('w:rStyle')
+            rStyle.set(qn('w:val'), 'Hyperlink')
+            rPr.append(rStyle)
+            r.append(rPr)
+            t = OxmlElement('w:t')
+            t.text = text
+            t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+            r.append(t)
+            hl.append(r)
+            para._p.append(hl)
+
+        def add_html_line_runs(para, html_line, font_size=10, base_color=None):
+            """Add runs to *para* from an HTML snippet, turning <a href="..."> into live links."""
+            segments = re.split(r'(<a\s[^>]*>.*?</a>)', html_line, flags=re.DOTALL)
+            for seg in segments:
+                m = re.match(r'<a\s+href="([^"]+)"[^>]*>(.*?)</a>', seg, re.DOTALL)
+                if m:
+                    url = m.group(1)
+                    link_text = html.unescape(re.sub(r'<[^>]+>', '', m.group(2)))
+                    if link_text:
+                        add_hyperlink(para, link_text, url)
+                else:
+                    text = html.unescape(re.sub(r'<[^>]+>', '', seg))
+                    if text:
+                        run = para.add_run(text)
+                        run.font.size = Pt(font_size)
+                        if base_color:
+                            run.font.color.rgb = base_color
+
         # Store parameters for later use
         self._missing_sections = missing_sections or []
         self._growth_mindset_analysis = growth_mindset_analysis or {}
@@ -4550,30 +4590,20 @@ Be generous - if content relates to the topic, include it in "found"."""
 
                 # Convert HTML description to structured Word paragraphs
                 raw_desc = self._get_section_description(section)
-                # Resolve hyperlinks to "text (url)" form
-                desc = re.sub(
-                    r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>',
-                    lambda m: f"{m.group(2)} ({m.group(1)})",
-                    raw_desc
-                )
-                # Convert structural HTML to line breaks / bullets
-                desc = re.sub(r'<br\s*/?>', '\n', desc)
+                # Convert structural HTML to line breaks / bullets (keep <a> tags for live links)
+                desc = re.sub(r'<br\s*/?>', '\n', raw_desc)
                 desc = re.sub(r'</?ul>', '\n', desc)
                 desc = re.sub(r'<li>', '• ', desc)
                 desc = re.sub(r'</li>', '\n', desc)
-                # Strip remaining tags and decode entities
-                desc = re.sub(r'<[^>]+>', '', desc)
-                desc = html.unescape(desc)
 
                 for line in desc.split('\n'):
                     line = line.strip()
                     if not line:
                         continue
                     p = marked_doc.add_paragraph()
-                    run = p.add_run(line)
-                    run.font.size = Pt(10)
                     if line.startswith('• '):
                         p.paragraph_format.left_indent = Pt(18)
+                    add_html_line_runs(p, line, font_size=10)
 
         # Add full Belonging & Growth Mindset analysis (mirrors the web app display)
         if self._growth_mindset_analysis.get('status') == 'success' and 'analysis' in self._growth_mindset_analysis:
