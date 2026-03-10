@@ -4540,7 +4540,18 @@ Be generous - if content relates to the topic, include it in "found"."""
             issue for issue in self.issues
             if issue.para_info is None and issue.table_index is None
         ]
-        if doc_level_issues:
+        if not self.issues:
+            marked_doc.add_paragraph()
+            banner_para = marked_doc.add_paragraph()
+            banner_run = banner_para.add_run("  ACCESSIBILITY — NO ISSUES DETECTED  ")
+            banner_run.bold = True
+            banner_run.font.size = Pt(14)
+            banner_run.font.color.rgb = RGBColor(0, 100, 0)
+            shade_paragraph(banner_para, 'D4EDDA')  # light green
+            desc_para = marked_doc.add_paragraph()
+            desc_run = desc_para.add_run("Your syllabus passed all accessibility checks.")
+            desc_run.font.size = Pt(10)
+        elif doc_level_issues:
             marked_doc.add_paragraph()
             banner_para = marked_doc.add_paragraph()
             banner_run = banner_para.add_run("  ACCESSIBILITY — DOCUMENT-LEVEL ISSUES  ")

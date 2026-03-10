@@ -500,7 +500,6 @@
         </div>
 
         <!-- SECTION 4: Digital Accessibility (important but after trust is built) -->
-        {% if results.category_counts %}
         <div class="report-section">
             <div class="section-header section-header-access">
                 <h4><i class="bi bi-universal-access"></i> 4. Accessibility</h4>
@@ -510,6 +509,12 @@
                 </button>
             </div>
             <div class="collapse section-body" id="accessibilityIssuesContent">
+                {% if not results.category_counts %}
+                <div class="alert alert-success mb-0">
+                    <i class="bi bi-check-circle-fill"></i> <strong>No accessibility issues detected.</strong>
+                    Your syllabus passed all accessibility checks.
+                </div>
+                {% else %}
                 <div class="alert alert-light border mb-3">
                     <i class="bi bi-info-circle"></i>
                     These checks ensure your syllabus works well for students using screen readers or other assistive technology.
@@ -752,6 +757,8 @@
                     {% endfor %}
                 </div>
 
+                {% endif %}
+
                 <!-- Image Alt Text Analysis (AI-powered) -->
                 {% if results.image_alt_analysis.status == 'success' %}
                 <div class="mt-4 pt-3 border-top">
@@ -778,7 +785,6 @@
                 {% endif %}
             </div>
         </div>
-        {% endif %}
 
         <!-- Actions -->
         <div class="text-center mb-5">
