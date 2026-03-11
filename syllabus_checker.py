@@ -747,6 +747,11 @@ class SyllabusChecker:
         # Extract headings with positions for heading detection
         headings = self._extract_headings_with_positions(full_text)
 
+        def is_placeholder(text: str) -> bool:
+            """Return True if text contains template placeholder markers, not real content."""
+            text_lower = text.lower()
+            return any(m in text_lower for m in ['< -', '- >', '<--', '-->', 'canvas insert'])
+
         def get_heading_info(content_position: int, standard_name: str) -> tuple:
             """Get the current heading and whether it matches the standard.
 
@@ -1040,6 +1045,59 @@ class SyllabusChecker:
                     'standard_heading': get_standard_heading(content_type)
                 }
                 break
+
+        # Department Policies - look for section heading or keyword
+        for term in ['department polic', 'department policy']:
+            if term in text_lower:
+                idx = text_lower.find(term)
+                snippet = full_text[max(0, idx):idx+150]
+                content_type = 'Department Policies'
+                current_heading, heading_ok = get_heading_info(idx, content_type)
+                detected[content_type] = {
+                    'found': snippet.strip()[:100],
+                    'heading_ok': heading_ok,
+                    'current_heading': current_heading,
+                    'standard_heading': get_standard_heading(content_type)
+                }
+                break
+
+        # Important Dates - look for section heading or keyword
+        for term in ['important dates', 'key dates']:
+            if term in text_lower:
+                idx = text_lower.find(term)
+                snippet = full_text[max(0, idx):idx+150]
+                content_type = 'Important Dates'
+                current_heading, heading_ok = get_heading_info(idx, content_type)
+                detected[content_type] = {
+                    'found': snippet.strip()[:100],
+                    'heading_ok': heading_ok,
+                    'current_heading': current_heading,
+                    'standard_heading': get_standard_heading(content_type)
+                }
+                break
+
+        # Instructor Statement of Support - look for support language
+        for term in ['statement of support', 'here to help', 'want you to succeed',
+                     'do not hesitate to reach out', 'help you succeed', 'instructor statement']:
+            if term in text_lower:
+                idx = text_lower.find(term)
+                snippet = full_text[max(0, idx):idx+150]
+                content_type = 'Instructor Statement of Support'
+                current_heading, heading_ok = get_heading_info(idx, content_type)
+                detected[content_type] = {
+                    'found': snippet.strip()[:100],
+                    'heading_ok': heading_ok,
+                    'current_heading': current_heading,
+                    'standard_heading': get_standard_heading(content_type)
+                }
+                break
+
+        # Suppress heading-standardization false positives for placeholder text:
+        # if the detected snippet is template placeholder content (not real student content),
+        # don't flag the nearby heading as wrong.
+        for info in detected.values():
+            if not info.get('heading_ok') and is_placeholder(info.get('found', '')):
+                info['heading_ok'] = True
 
         return detected
 
