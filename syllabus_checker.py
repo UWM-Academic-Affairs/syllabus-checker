@@ -615,7 +615,8 @@ class SyllabusChecker:
                     'text': heading_text,
                     'position': pos,
                     'standard_name': matched_standard,
-                    'is_word_heading': True
+                    'is_word_heading': True,
+                    'is_top_level': section.get('location', '') == 'top-level'
                 })
 
         # Also look for table cell headings (single words followed by content in tables)
@@ -657,13 +658,30 @@ class SyllabusChecker:
         return headings
 
     def _find_heading_for_content(self, content_position: int, headings: List[Dict]) -> Dict:
-        """Find the nearest heading that precedes the content position."""
-        nearest_heading = None
+        """Find the nearest heading that precedes the content position.
+
+        Priority order:
+        1. Top-level Word-styled headings (most reliable — actual document section headings)
+        2. Table-cell Word-styled headings (Heading style but inside a table)
+        3. Pseudo-headings (short plain-text lines that look like headings)
+
+        This prevents table cell row labels (e.g. "Revision", "Draft") from overriding
+        the real section heading that governs the surrounding content.
+        """
+        nearest_toplevel = None
+        nearest_word_heading = None
+        nearest_any_heading = None
         for heading in headings:
             if heading['position'] < content_position:
-                if nearest_heading is None or heading['position'] > nearest_heading['position']:
-                    nearest_heading = heading
-        return nearest_heading
+                if nearest_any_heading is None or heading['position'] > nearest_any_heading['position']:
+                    nearest_any_heading = heading
+                if heading.get('is_word_heading'):
+                    if nearest_word_heading is None or heading['position'] > nearest_word_heading['position']:
+                        nearest_word_heading = heading
+                    if heading.get('is_top_level'):
+                        if nearest_toplevel is None or heading['position'] > nearest_toplevel['position']:
+                            nearest_toplevel = heading
+        return nearest_toplevel or nearest_word_heading or nearest_any_heading
 
     def _extract_sections(self, doc: Document) -> List[Dict]:
         """Extract headings and their content from document (including tables and nested tables)"""
@@ -783,6 +801,18 @@ class SyllabusChecker:
                         standard_words = [w.lower() for w in standard_name.split() if len(w) > 3]
                         heading_ok = any(word in heading_lower for word in standard_words) if standard_words else False
 
+                # If the content lands under a recognized *required* course-section heading
+                # (even a different one than expected), don't suggest renaming it — the
+                # content legitimately belongs to that section.  We intentionally exclude
+                # template meta-sections (e.g. "Questions, comments…", "Tips from CETL")
+                # from this check by only looking at REQUIRED_SECTIONS keys.
+                if not heading_ok:
+                    for std in self.REQUIRED_SECTIONS.keys():
+                        std_lower = std.lower()
+                        if std_lower == heading_lower or std_lower in heading_lower or heading_lower in std_lower:
+                            heading_ok = True
+                            break
+
                 return current_heading, heading_ok
             return None, False
 
@@ -820,24 +850,48 @@ class SyllabusChecker:
 
             return content_type
 
-        # Instructor Contact Info - look for email addresses, phone numbers
-        email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', full_text)
-        phone_match = re.search(r'\d{3}[-.\s]?\d{4}|\(\d{3}\)\s*\d{3}[-.\s]?\d{4}', full_text)
-        if email_match or phone_match:
-            found_parts = []
-            content_pos = email_match.start() if email_match else phone_match.start()
-            if email_match:
-                found_parts.append(email_match.group())
-            if phone_match:
-                found_parts.append(phone_match.group())
+        # Instructor Contact Info - look for email addresses, phone numbers.
+        # Search all occurrences and prefer those found under an instructor-related heading.
+        # This prevents picking up an author/contact email in template preamble sections.
+        email_matches = list(re.finditer(r'[\w\.-]+@[\w\.-]+\.\w+', full_text))
+        phone_matches = list(re.finditer(r'\d{3}[-.\s]?\d{4}|\(\d{3}\)\s*\d{3}[-.\s]?\d{4}', full_text))
+        if email_matches or phone_matches:
             content_type = 'Instructor'
-            current_heading, heading_ok = get_heading_info(content_pos, content_type)
-            detected[content_type] = {
-                'found': ', '.join(found_parts),
-                'heading_ok': heading_ok,
-                'current_heading': current_heading,
-                'standard_heading': get_standard_heading(content_type)
-            }
+            # Try to find any occurrence that sits under a good (instructor-related) heading
+            best_pos = None
+            best_heading_ok = False
+            all_matches = email_matches + phone_matches
+            for m in all_matches:
+                _, ok = get_heading_info(m.start(), content_type)
+                if ok:
+                    best_pos = m.start()
+                    best_heading_ok = True
+                    break
+            # Fall back to first occurrence only if it's under a heading that isn't
+            # clearly a non-course section (e.g. template tips / feedback sections).
+            if not best_heading_ok:
+                first_match = all_matches[0]
+                first_heading, _ = get_heading_info(first_match.start(), content_type)
+                non_course_keywords = ['question', 'suggest', 'comment', 'improve', 'feedback',
+                                       'template', 'tip', 'cetl']
+                if first_heading and any(kw in first_heading.lower() for kw in non_course_keywords):
+                    # The only hit is in template preamble — don't report a false heading warning.
+                    pass  # leave detected['Instructor'] unset
+                else:
+                    best_pos = first_match.start()
+            if best_pos is not None:
+                found_parts = []
+                if email_matches:
+                    found_parts.append(email_matches[0].group())
+                if phone_matches:
+                    found_parts.append(phone_matches[0].group())
+                current_heading, heading_ok = get_heading_info(best_pos, content_type)
+                detected[content_type] = {
+                    'found': ', '.join(found_parts),
+                    'heading_ok': heading_ok,
+                    'current_heading': current_heading,
+                    'standard_heading': get_standard_heading(content_type)
+                }
 
         # Office Hours - look for "office hours" followed by times
         # Note: Office hours is typically part of the Instructor section in the template
@@ -922,8 +976,10 @@ class SyllabusChecker:
         # Calendar/Schedule - look for dates and weekly structure
         date_pattern = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}', text_lower)
         week_pattern = re.search(r'week\s*\d|week\s*one|week\s*two', text_lower)
-        if date_pattern or week_pattern or 'schedule' in text_lower:
-            idx = date_pattern.start() if date_pattern else (week_pattern.start() if week_pattern else text_lower.find('schedule'))
+        # Only trigger on concrete date/week evidence, not just the word "schedule" appearing
+        # anywhere in the document (that's too broad and causes false positives in tips sections).
+        if date_pattern or week_pattern:
+            idx = date_pattern.start() if date_pattern else week_pattern.start()
             content_type = 'Calendar'
             current_heading, heading_ok = get_heading_info(idx, content_type)
             detected[content_type] = {
