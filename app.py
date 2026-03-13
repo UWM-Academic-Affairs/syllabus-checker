@@ -415,6 +415,13 @@ def upload_file():
                 image_alt_analysis['analysis'],
                 extensions=['extra', 'nl2br', 'sane_lists']
             )
+            # Flag when the LLM found no issues (both checkmarks present) so the
+            # template can suppress the section rather than showing a green no-op.
+            analysis_lower = image_alt_analysis['analysis'].lower()
+            image_alt_analysis['has_issues'] = not (
+                'all institutional logos have meaningful alt text' in analysis_lower
+                and 'all alt text is clear, concise, and descriptive' in analysis_lower
+            )
 
         results = {
             'filename': filename,
