@@ -1037,9 +1037,14 @@ class SyllabusChecker:
                     'standard_heading': get_standard_heading(content_type)
                 }
 
-        # Meeting Times & Location - look for days/times
-        # Note: This is typically part of Instructor section in the template
-        time_pattern = re.search(r'(monday|tuesday|wednesday|thursday|friday|m[wf]|t[r]?h?|mwf)[,\s]*(and)?[,\s]*(monday|tuesday|wednesday|thursday|friday|m[wf]|t[r]?h?)?\s*[\d:]+', text_lower)
+        # Meeting Times & Location - look for days/times.
+        # The day+time pattern requires an actual HH:MM time (not bare colons) so that
+        # schedule entries like "Workshop:" or table cells ending in "t:" don't match.
+        time_pattern = re.search(
+            r'\b(monday|tuesday|wednesday|thursday|friday|m[wf]f?|t[r]?h?|mwf)\b'
+            r'[,\s]*(and\s+)?\b(monday|tuesday|wednesday|thursday|friday|m[wf]f?|t[r]?h?|mwf\b)?'
+            r'\s*\d{1,2}:\d{2}',
+            text_lower)
         if not time_pattern:
             time_pattern = re.search(r'\d{1,2}:\d{2}\s*(am|pm|a\.m\.|p\.m\.)', text_lower)
         if time_pattern:
@@ -1051,7 +1056,7 @@ class SyllabusChecker:
                 'found': snippet.strip()[:80],
                 'heading_ok': heading_ok,
                 'current_heading': current_heading,
-                'standard_heading': 'Instructor'  # Per template
+                'standard_heading': get_standard_heading(content_type)
             }
 
         # Student Learning Outcomes - look for outcome language
