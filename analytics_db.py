@@ -94,6 +94,18 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_department ON scans(department)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_course_subject ON scans(course_subject)')
 
+    # Create repository table for saved syllabi
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS saved_syllabi (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id INTEGER REFERENCES scans(id) ON DELETE SET NULL,
+            original_filename TEXT NOT NULL,
+            stored_filename TEXT NOT NULL,
+            saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_saved_at ON saved_syllabi(saved_at)')
+
     conn.commit()
     conn.close()
 
@@ -673,6 +685,51 @@ def get_clarity_quality_subcategory_stats(department: str = None) -> Dict[str, D
                         stats[cat]['scans_clean'] += 1
 
     return stats
+
+def save_to_repository(scan_id: Optional[int], original_filename: str, stored_filename: str) -> int:
+    """Record a syllabus as saved to the repository. Returns the new row id."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO saved_syllabi (scan_id, original_filename, stored_filename)
+        VALUES (?, ?, ?)
+    ''', (scan_id, original_filename, stored_filename))
+    row_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return row_id
+
+
+def is_saved(scan_id: int) -> bool:
+    """Return True if this scan has already been saved to the repository."""
+    if not scan_id:
+        return False
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT 1 FROM saved_syllabi WHERE scan_id = ?', (scan_id,))
+    found = cursor.fetchone() is not None
+    conn.close()
+    return found
+
+
+def get_saved_syllabi(limit: int = 200) -> List[Dict]:
+    """Return saved syllabi joined with scan metadata, newest first."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT
+            ss.id, ss.scan_id, ss.original_filename, ss.stored_filename, ss.saved_at,
+            s.instructor_name, s.department, s.course_subject, s.course_number,
+            s.course_title, s.semester, s.total_issues
+        FROM saved_syllabi ss
+        LEFT JOIN scans s ON ss.scan_id = s.id
+        ORDER BY ss.saved_at DESC
+        LIMIT ?
+    ''', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
 
 # Initialize database on module load
 init_db()

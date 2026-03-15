@@ -21,9 +21,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'syllabus-checker-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/tmp/syllabus_checker_uploads')
+app.config['REPO_FOLDER'] = os.environ.get('REPO_FOLDER',
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'repository'))
 
-# Ensure upload folder exists
+# Ensure upload and repository folders exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['REPO_FOLDER'], exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'docx'}
 
@@ -567,7 +570,7 @@ def upload_file():
                 if top_issues:
                     accessibility_summary = '; '.join([f"{cat}: {count}" for cat, count in top_issues])
 
-            analytics_db.store_scan_result(
+            scan_id = analytics_db.store_scan_result(
                 filename=filename,
                 instructor_name=instructor_name,
                 department=department,
@@ -589,6 +592,7 @@ def upload_file():
                 language_tone_subcategories=language_tone_subcategories,
                 clarity_quality_subcategories=clarity_quality_subcategories
             )
+            results['scan_id'] = scan_id
         except Exception as db_error:
             # Don't fail the request if analytics storage fails
             print(f"Analytics storage error: {db_error}")
@@ -617,6 +621,34 @@ def download_file(filename):
     except Exception as e:
         flash(f'Error downloading file: {str(e)}', 'error')
         return redirect(url_for('index'))
+
+@app.route('/repository/save', methods=['POST'])
+def repository_save():
+    """Copy the uploaded syllabus into the persistent repository."""
+    scan_id = request.form.get('scan_id', type=int)
+    filename = request.form.get('filename', '')
+
+    if not filename:
+        flash('No file specified.', 'error')
+        return redirect(url_for('index'))
+
+    safe_name = secure_filename(filename)
+    src = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
+
+    if not os.path.exists(src):
+        flash('Original file is no longer available in the upload folder.', 'error')
+        return redirect(url_for('index'))
+
+    # Store with a timestamp prefix so duplicates are kept distinct
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    stored_name = f"{timestamp}_{safe_name}"
+    dest = os.path.join(app.config['REPO_FOLDER'], stored_name)
+    shutil.copy2(src, dest)
+
+    analytics_db.save_to_repository(scan_id, filename, stored_name)
+    flash(f'"{filename}" has been saved to the repository.', 'success')
+    return redirect(url_for('index'))
+
 
 @app.route('/about')
 def about():
