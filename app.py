@@ -23,10 +23,15 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/tmp/syllabus_checker_uploads')
 app.config['REPO_FOLDER'] = os.environ.get('REPO_FOLDER',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'repository'))
+# Fall back to a /tmp path if the default location isn't writable (e.g. restricted service user)
+try:
+    os.makedirs(app.config['REPO_FOLDER'], exist_ok=True)
+except PermissionError:
+    app.config['REPO_FOLDER'] = os.path.join('/tmp', 'syllabus_checker_repository')
+    os.makedirs(app.config['REPO_FOLDER'], exist_ok=True)
 
-# Ensure upload and repository folders exist
+# Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['REPO_FOLDER'], exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'docx'}
 
