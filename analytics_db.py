@@ -686,6 +686,16 @@ def get_clarity_quality_subcategory_stats(department: str = None) -> Dict[str, D
 
     return stats
 
+def get_saved_scan_ids() -> set:
+    """Return the set of scan IDs that have been saved to the repository."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT scan_id FROM saved_syllabi WHERE scan_id IS NOT NULL')
+    ids = {row['scan_id'] for row in cursor.fetchall()}
+    conn.close()
+    return ids
+
+
 def save_to_repository(scan_id: Optional[int], original_filename: str, stored_filename: str) -> int:
     """Record a syllabus as saved to the repository. Returns the new row id."""
     conn = get_db_connection()

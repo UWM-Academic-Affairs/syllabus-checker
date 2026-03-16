@@ -655,6 +655,20 @@ def repository_save():
     return redirect(url_for('index'))
 
 
+@app.route('/repository/download/<path:stored_filename>')
+def repository_download(stored_filename):
+    """Download a syllabus from the repository."""
+    safe_name = secure_filename(stored_filename)
+    file_path = os.path.join(app.config['REPO_FOLDER'], safe_name)
+    if not os.path.exists(file_path):
+        flash('File not found in repository.', 'error')
+        return redirect(url_for('admin_analytics'))
+    # Strip the timestamp prefix for the download name
+    display_name = safe_name[16:] if len(safe_name) > 16 and safe_name[8] == '_' else safe_name
+    return send_file(file_path, as_attachment=True, download_name=display_name,
+                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+
 @app.route('/about')
 def about():
     """About page"""
@@ -714,6 +728,10 @@ def admin_analytics():
     # Get total scan count for CSV download info
     total_scans = analytics_db.get_scan_count(dept_param)
 
+    # Repository data
+    saved_syllabi = analytics_db.get_saved_syllabi()
+    saved_scan_ids = analytics_db.get_saved_scan_ids()
+
     return render_template('admin_analytics.html',
                            stats=stats,
                            four_areas=four_areas,
@@ -730,7 +748,9 @@ def admin_analytics():
                            departments=departments,
                            department_filter=department_filter,
                            recent_scans=recent_scans,
-                           total_scans=total_scans)
+                           total_scans=total_scans,
+                           saved_syllabi=saved_syllabi,
+                           saved_scan_ids=saved_scan_ids)
 
 @app.route('/admin/analytics/delete', methods=['POST'])
 def admin_analytics_delete():
