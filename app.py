@@ -629,9 +629,10 @@ def download_file(filename):
 
 @app.route('/repository/save', methods=['POST'])
 def repository_save():
-    """Copy the uploaded syllabus into the persistent repository."""
+    """Copy the original and marked syllabi into the persistent repository."""
     scan_id = request.form.get('scan_id', type=int)
     filename = request.form.get('filename', '')
+    marked_filename = request.form.get('marked_filename', '')
 
     if not filename:
         flash('No file specified.', 'error')
@@ -647,10 +648,18 @@ def repository_save():
     # Store with a timestamp prefix so duplicates are kept distinct
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     stored_name = f"{timestamp}_{safe_name}"
-    dest = os.path.join(app.config['REPO_FOLDER'], stored_name)
-    shutil.copy2(src, dest)
+    shutil.copy2(src, os.path.join(app.config['REPO_FOLDER'], stored_name))
 
-    analytics_db.save_to_repository(scan_id, filename, stored_name)
+    # Also copy the marked version if it exists
+    stored_marked_name = None
+    if marked_filename:
+        safe_marked = secure_filename(marked_filename)
+        marked_src = os.path.join(app.config['UPLOAD_FOLDER'], safe_marked)
+        if os.path.exists(marked_src):
+            stored_marked_name = f"{timestamp}_{safe_marked}"
+            shutil.copy2(marked_src, os.path.join(app.config['REPO_FOLDER'], stored_marked_name))
+
+    analytics_db.save_to_repository(scan_id, filename, stored_name, stored_marked_name)
     flash(f'"{filename}" has been saved to the repository.', 'success')
     return redirect(url_for('index'))
 

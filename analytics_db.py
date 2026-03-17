@@ -101,9 +101,19 @@ def init_db():
             scan_id INTEGER REFERENCES scans(id) ON DELETE SET NULL,
             original_filename TEXT NOT NULL,
             stored_filename TEXT NOT NULL,
+            stored_marked_filename TEXT,
             saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Add stored_marked_filename to existing databases
+    cursor.execute("PRAGMA table_info(saved_syllabi)")
+    saved_cols = [col[1] for col in cursor.fetchall()]
+    if 'stored_marked_filename' not in saved_cols:
+        try:
+            cursor.execute("ALTER TABLE saved_syllabi ADD COLUMN stored_marked_filename TEXT")
+        except:
+            pass
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_saved_at ON saved_syllabi(saved_at)')
 
     conn.commit()
@@ -696,14 +706,15 @@ def get_saved_scan_ids() -> set:
     return ids
 
 
-def save_to_repository(scan_id: Optional[int], original_filename: str, stored_filename: str) -> int:
+def save_to_repository(scan_id: Optional[int], original_filename: str, stored_filename: str,
+                       stored_marked_filename: str = None) -> int:
     """Record a syllabus as saved to the repository. Returns the new row id."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO saved_syllabi (scan_id, original_filename, stored_filename)
-        VALUES (?, ?, ?)
-    ''', (scan_id, original_filename, stored_filename))
+        INSERT INTO saved_syllabi (scan_id, original_filename, stored_filename, stored_marked_filename)
+        VALUES (?, ?, ?, ?)
+    ''', (scan_id, original_filename, stored_filename, stored_marked_filename))
     row_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -728,7 +739,8 @@ def get_saved_syllabi(limit: int = 200) -> List[Dict]:
     cursor = conn.cursor()
     cursor.execute('''
         SELECT
-            ss.id, ss.scan_id, ss.original_filename, ss.stored_filename, ss.saved_at,
+            ss.id, ss.scan_id, ss.original_filename, ss.stored_filename,
+            ss.stored_marked_filename, ss.saved_at,
             s.instructor_name, s.department, s.course_subject, s.course_number,
             s.course_title, s.semester, s.total_issues
         FROM saved_syllabi ss

@@ -279,12 +279,24 @@
             </div>
         </div>
 
-        <!-- Download Button -->
+        <!-- Download + Save Buttons -->
         <div class="text-center mb-4">
-            <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg">
-                <i class="bi bi-download"></i> Download Marked Document
-            </a>
-            <p class="text-muted mt-2 small">
+            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mb-2">
+                <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg">
+                    <i class="bi bi-download"></i> Download Marked Document
+                </a>
+                {% if results.scan_id %}
+                <form method="POST" action="{{ url_for('repository_save') }}" class="d-inline">
+                    <input type="hidden" name="scan_id" value="{{ results.scan_id }}">
+                    <input type="hidden" name="filename" value="{{ results.filename }}">
+                    <input type="hidden" name="marked_filename" value="{{ results.marked_file }}">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-archive"></i> Save to Repository
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <p class="text-muted mt-1 small">
                 The marked document includes comments and highlights showing all issues,
                 plus sections at the end with missing required content and ready-to-use language suggestions
             </p>
@@ -791,17 +803,6 @@
             <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-left"></i> Check Another Document
             </a>
-
-            {% if results.scan_id %}
-            <form method="POST" action="{{ url_for('repository_save') }}" class="d-inline">
-                <input type="hidden" name="scan_id" value="{{ results.scan_id }}">
-                <input type="hidden" name="filename" value="{{ results.filename }}">
-                <button type="submit" class="btn btn-success">
-                    <i class="bi bi-archive"></i> Save to Repository
-                </button>
-            </form>
-            {% endif %}
-
             <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-bar-chart-line"></i> Admin
             </a>
