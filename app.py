@@ -635,15 +635,13 @@ def repository_save():
     marked_filename = request.form.get('marked_filename', '')
 
     if not filename:
-        flash('No file specified.', 'error')
-        return redirect(url_for('index'))
+        return ('No file specified.', 400)
 
     safe_name = secure_filename(filename)
     src = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
 
     if not os.path.exists(src):
-        flash('Original file is no longer available in the upload folder.', 'error')
-        return redirect(url_for('index'))
+        return ('Original file is no longer available.', 400)
 
     # Store with a timestamp prefix so duplicates are kept distinct
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -660,8 +658,7 @@ def repository_save():
             shutil.copy2(marked_src, os.path.join(app.config['REPO_FOLDER'], stored_marked_name))
 
     analytics_db.save_to_repository(scan_id, filename, stored_name, stored_marked_name)
-    flash(f'"{filename}" has been saved to the repository.', 'success')
-    return redirect(url_for('index'))
+    return ('', 204)
 
 
 @app.route('/repository/download/<path:stored_filename>')

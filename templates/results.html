@@ -286,14 +286,15 @@
                     <i class="bi bi-download"></i> Download Marked Document
                 </a>
                 {% if results.scan_id %}
-                <form method="POST" action="{{ url_for('repository_save') }}" class="d-inline">
-                    <input type="hidden" name="scan_id" value="{{ results.scan_id }}">
-                    <input type="hidden" name="filename" value="{{ results.filename }}">
-                    <input type="hidden" name="marked_filename" value="{{ results.marked_file }}">
-                    <button type="submit" class="btn btn-success btn-lg">
+                <span id="save-repo-wrapper">
+                    <button id="save-repo-btn" class="btn btn-download btn-lg"
+                            data-scan-id="{{ results.scan_id }}"
+                            data-filename="{{ results.filename }}"
+                            data-marked-filename="{{ results.marked_file }}"
+                            onclick="saveToRepository(this)">
                         <i class="bi bi-archive"></i> Save to Repository
                     </button>
-                </form>
+                </span>
                 {% endif %}
             </div>
             <p class="text-muted mt-1 small">
@@ -825,5 +826,27 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function saveToRepository(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving…';
+        const data = new FormData();
+        data.append('scan_id', btn.dataset.scanId);
+        data.append('filename', btn.dataset.filename);
+        data.append('marked_filename', btn.dataset.markedFilename);
+        fetch('{{ url_for("repository_save") }}', { method: 'POST', body: data })
+            .then(r => {
+                const wrapper = document.getElementById('save-repo-wrapper');
+                if (r.ok || r.redirected) {
+                    wrapper.innerHTML = '<span class="btn btn-download btn-lg pe-none"><i class="bi bi-check-circle-fill me-1"></i> Saved to Repository</span>';
+                } else {
+                    wrapper.innerHTML = '<span class="text-danger">Save failed. Please try again.</span>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('save-repo-wrapper').innerHTML = '<span class="text-danger">Save failed. Please try again.</span>';
+            });
+    }
+    </script>
 </body>
 </html>
