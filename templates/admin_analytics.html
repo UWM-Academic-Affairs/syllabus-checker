@@ -632,7 +632,7 @@
                                 <th>Department</th>
                                 <th>Semester</th>
                                 <th>Issues</th>
-                                <th>File</th>
+                                <th>Downloads</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -663,11 +663,17 @@
                                     </span>
                                     {% else %}—{% endif %}
                                 </td>
-                                <td>
+                                <td class="text-nowrap">
                                     <a href="{{ url_for('repository_download', stored_filename=item.stored_filename) }}"
-                                       class="btn btn-sm btn-outline-primary" title="{{ item.original_filename }}">
-                                        <i class="bi bi-download"></i> Download
+                                       class="btn btn-sm btn-outline-secondary me-1" title="Download original: {{ item.original_filename }}">
+                                        <i class="bi bi-file-word"></i> Original
                                     </a>
+                                    {% if item.stored_marked_filename %}
+                                    <a href="{{ url_for('repository_download', stored_filename=item.stored_marked_filename) }}"
+                                       class="btn btn-sm btn-outline-primary" title="Download marked version">
+                                        <i class="bi bi-download"></i> Marked
+                                    </a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
