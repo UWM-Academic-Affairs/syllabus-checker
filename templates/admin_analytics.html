@@ -656,13 +656,15 @@
                                 <th>Semester</th>
                                 <th>Issues</th>
                                 <th>Downloads</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody id="repo-tbody">
                             {% for item in saved_syllabi %}
                             <tr data-year="{{ item.saved_at[:4] if item.saved_at else '' }}"
                                 data-subject="{{ (item.course_subject or '') | lower }}"
-                                data-instructor="{{ (item.instructor_name or '') | lower }}">
+                                data-instructor="{{ (item.instructor_name or '') | lower }}"
+                                data-repo-id="{{ item.id }}">
                                 <td class="text-nowrap small">{{ item.saved_at[:10] if item.saved_at else '—' }}</td>
                                 <td>
                                     {% if item.course_subject or item.course_number %}
@@ -699,6 +701,12 @@
                                         <i class="bi bi-download"></i> Marked
                                     </a>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete from repository"
+                                            onclick="repoDelete(this, {{ item.id }}, '{{ item.original_filename }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -756,6 +764,24 @@
                     });
 
                     repoFilter();
+
+                    window.repoDelete = function(btn, repoId, filename) {
+                        if (!confirm(`Delete "${filename}" from the repository? This cannot be undone.`)) return;
+                        btn.disabled = true;
+                        fetch(`/repository/delete/${repoId}`, { method: 'POST' })
+                            .then(r => {
+                                if (r.ok) {
+                                    const row = btn.closest('tr');
+                                    row.style.transition = 'opacity 0.3s';
+                                    row.style.opacity = '0';
+                                    setTimeout(() => { row.remove(); repoFilter(); }, 300);
+                                } else {
+                                    btn.disabled = false;
+                                    alert('Delete failed. Please try again.');
+                                }
+                            })
+                            .catch(() => { btn.disabled = false; alert('Delete failed. Please try again.'); });
+                    };
                 })();
                 </script>
                 {% else %}

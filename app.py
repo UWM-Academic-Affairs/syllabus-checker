@@ -675,6 +675,19 @@ def repository_download(stored_filename):
                      mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
 
+@app.route('/repository/delete/<int:repo_id>', methods=['POST'])
+def repository_delete(repo_id):
+    """Delete a repository entry and its stored files."""
+    row = analytics_db.delete_from_repository(repo_id)
+    if row:
+        for fname in [row.get('stored_filename'), row.get('stored_marked_filename')]:
+            if fname:
+                path = os.path.join(app.config['REPO_FOLDER'], secure_filename(fname))
+                if os.path.exists(path):
+                    os.remove(path)
+    return ('', 204)
+
+
 @app.route('/about')
 def about():
     """About page"""

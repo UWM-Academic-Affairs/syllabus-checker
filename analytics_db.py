@@ -753,5 +753,18 @@ def get_saved_syllabi(limit: int = 200) -> List[Dict]:
     return [dict(row) for row in rows]
 
 
+def delete_from_repository(repo_id: int) -> Optional[Dict]:
+    """Delete a saved_syllabi row and return its stored filenames so the caller can remove the files."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT stored_filename, stored_marked_filename FROM saved_syllabi WHERE id = ?', (repo_id,))
+    row = cursor.fetchone()
+    if row:
+        cursor.execute('DELETE FROM saved_syllabi WHERE id = ?', (repo_id,))
+        conn.commit()
+    conn.close()
+    return dict(row) if row else None
+
+
 # Initialize database on module load
 init_db()
