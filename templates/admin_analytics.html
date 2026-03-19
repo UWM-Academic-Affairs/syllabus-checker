@@ -622,22 +622,53 @@
                 </div>
 
                 {% if saved_syllabi %}
+                <!-- Filter controls -->
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-3">
+                        <select id="repo-filter-year" class="form-select form-select-sm" onchange="repoFilter()">
+                            <option value="">All years</option>
+                            {% set years = saved_syllabi | map(attribute='saved_at') | select | map('truncate', 4, False, '') | unique | sort(reverse=True) %}
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-3">
+                        <select id="repo-filter-subject" class="form-select form-select-sm" onchange="repoFilter()">
+                            <option value="">All subjects</option>
+                            {% set subjects = saved_syllabi | map(attribute='course_subject') | select | unique | sort %}
+                            {% for s in subjects %}
+                            <option value="{{ s | lower }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
+                        <input id="repo-filter-instructor" type="search" class="form-control form-control-sm"
+                               placeholder="Filter by instructor…" oninput="repoFilter()">
+                    </div>
+                    <div class="col-sm-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="repoClearFilters()">Clear</button>
+                    </div>
+                </div>
+                <p id="repo-count" class="small text-muted mb-2"></p>
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm">
+                    <table class="table table-hover table-sm" id="repo-table">
                         <thead>
                             <tr>
-                                <th>Saved</th>
-                                <th>Course</th>
-                                <th>Instructor</th>
+                                <th class="repo-sort" data-col="0" style="cursor:pointer">Saved <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                                <th class="repo-sort" data-col="1" style="cursor:pointer">Course <i class="bi bi-arrow-down-up text-muted small"></i></th>
+                                <th class="repo-sort" data-col="2" style="cursor:pointer">Instructor <i class="bi bi-arrow-down-up text-muted small"></i></th>
                                 <th>Department</th>
                                 <th>Semester</th>
                                 <th>Issues</th>
                                 <th>Downloads</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="repo-tbody">
                             {% for item in saved_syllabi %}
-                            <tr>
+                            <tr data-year="{{ item.saved_at[:4] if item.saved_at else '' }}"
+                                data-subject="{{ (item.course_subject or '') | lower }}"
+                                data-instructor="{{ (item.instructor_name or '') | lower }}">
                                 <td class="text-nowrap small">{{ item.saved_at[:10] if item.saved_at else '—' }}</td>
                                 <td>
                                     {% if item.course_subject or item.course_number %}
@@ -680,6 +711,59 @@
                         </tbody>
                     </table>
                 </div>
+                <script>
+                (function(){
+                    let sortCol = 0, sortAsc = false;
+
+                    function applySort(rows) {
+                        rows.sort((a, b) => {
+                            const aVal = a.cells[sortCol].textContent.trim().toLowerCase();
+                            const bVal = b.cells[sortCol].textContent.trim().toLowerCase();
+                            return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                        });
+                    }
+
+                    window.repoFilter = function() {
+                        const year = document.getElementById('repo-filter-year').value;
+                        const subject = document.getElementById('repo-filter-subject').value;
+                        const instructor = document.getElementById('repo-filter-instructor').value.toLowerCase().trim();
+                        const tbody = document.getElementById('repo-tbody');
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        let visible = 0;
+                        rows.forEach(row => {
+                            const show = (!year || row.dataset.year === year)
+                                      && (!subject || row.dataset.subject === subject)
+                                      && (!instructor || row.dataset.instructor.includes(instructor));
+                            row.style.display = show ? '' : 'none';
+                            if (show) visible++;
+                        });
+                        const count = document.getElementById('repo-count');
+                        const total = rows.length;
+                        count.textContent = visible === total ? `${total} entries` : `${visible} of ${total} entries`;
+                    };
+
+                    window.repoClearFilters = function() {
+                        document.getElementById('repo-filter-year').value = '';
+                        document.getElementById('repo-filter-subject').value = '';
+                        document.getElementById('repo-filter-instructor').value = '';
+                        repoFilter();
+                    };
+
+                    document.querySelectorAll('.repo-sort').forEach(th => {
+                        th.addEventListener('click', () => {
+                            const col = parseInt(th.dataset.col);
+                            if (sortCol === col) { sortAsc = !sortAsc; }
+                            else { sortCol = col; sortAsc = true; }
+                            const tbody = document.getElementById('repo-tbody');
+                            const rows = Array.from(tbody.querySelectorAll('tr:not([style*="display: none"])'));
+                            applySort(rows);
+                            rows.forEach(r => tbody.appendChild(r));
+                        });
+                    });
+
+                    repoFilter();
+                })();
+                </script>
                 {% else %}
                 <p class="text-muted">No syllabi have been saved to the repository yet. Use the <strong>Save to Repository</strong> button on the results page after checking a syllabus.</p>
                 {% endif %}
