@@ -660,28 +660,39 @@ class SyllabusChecker:
     def _find_heading_for_content(self, content_position: int, headings: List[Dict]) -> Dict:
         """Find the nearest heading that precedes the content position.
 
-        Priority order:
-        1. Top-level Word-styled headings (most reliable — actual document section headings)
-        2. Table-cell Word-styled headings (Heading style but inside a table)
-        3. Pseudo-headings (short plain-text lines that look like headings)
-
-        This prevents table cell row labels (e.g. "Revision", "Draft") from overriding
-        the real section heading that governs the surrounding content.
+        Priority rules:
+        - Table-cell Word headings never override a top-level Word heading (prevents row
+          labels like "Revision" from overriding the real section heading).
+        - A pseudo-heading (plain-text informal heading) that is *closer* to the content
+          than the nearest top-level Word heading wins — this handles documents where all
+          content lives inside a table whose row labels are not styled as headings (e.g.
+          a two-column table with section labels in column 0).
         """
         nearest_toplevel = None
-        nearest_word_heading = None
-        nearest_any_heading = None
+        nearest_word_heading = None  # table-cell Word heading (is_word_heading, not is_top_level)
+        nearest_pseudo = None        # plain-text pseudo-heading (not is_word_heading)
         for heading in headings:
             if heading['position'] < content_position:
-                if nearest_any_heading is None or heading['position'] > nearest_any_heading['position']:
-                    nearest_any_heading = heading
+                pos = heading['position']
                 if heading.get('is_word_heading'):
-                    if nearest_word_heading is None or heading['position'] > nearest_word_heading['position']:
-                        nearest_word_heading = heading
                     if heading.get('is_top_level'):
-                        if nearest_toplevel is None or heading['position'] > nearest_toplevel['position']:
+                        if nearest_toplevel is None or pos > nearest_toplevel['position']:
                             nearest_toplevel = heading
-        return nearest_toplevel or nearest_word_heading or nearest_any_heading
+                    else:
+                        if nearest_word_heading is None or pos > nearest_word_heading['position']:
+                            nearest_word_heading = heading
+                else:
+                    if nearest_pseudo is None or pos > nearest_pseudo['position']:
+                        nearest_pseudo = heading
+
+        # If a pseudo-heading is closer than the top-level heading, prefer it —
+        # the top-level heading is likely a document title covering the whole doc.
+        if nearest_toplevel and nearest_pseudo:
+            if nearest_pseudo['position'] > nearest_toplevel['position']:
+                return nearest_pseudo
+            return nearest_toplevel
+
+        return nearest_toplevel or nearest_word_heading or nearest_pseudo
 
     def _extract_sections(self, doc: Document) -> List[Dict]:
         """Extract headings and their content from document (including tables and nested tables)"""
@@ -807,9 +818,24 @@ class SyllabusChecker:
                 # template meta-sections (e.g. "Questions, comments…", "Tips from CETL")
                 # from this check by only looking at REQUIRED_SECTIONS keys.
                 if not heading_ok:
+                    heading_words = set(w for w in heading_lower.split() if len(w) > 3)
                     for std in self.REQUIRED_SECTIONS.keys():
                         std_lower = std.lower()
                         if std_lower == heading_lower or std_lower in heading_lower or heading_lower in std_lower:
+                            heading_ok = True
+                            break
+                        # Word-overlap: heading shares 2+ meaningful words with a required section
+                        # Use prefix matching to handle plurals (assignment/assignments)
+                        std_words = set(w for w in std_lower.split() if len(w) > 3)
+                        def _words_overlap(ws1, ws2):
+                            count = 0
+                            for w1 in ws1:
+                                for w2 in ws2:
+                                    if w1 == w2 or w1.startswith(w2) or w2.startswith(w1):
+                                        count += 1
+                                        break
+                            return count
+                        if _words_overlap(heading_words, std_words) >= 2:
                             heading_ok = True
                             break
 
