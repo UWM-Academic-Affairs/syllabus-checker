@@ -329,53 +329,79 @@ class SyllabusChecker:
     def _extract_standard_headings(self) -> Dict[str, Dict]:
         """Extract standard section headings and their descriptions from the template.
 
+        Walks document body children in order (paragraphs AND tables) so that
+        sample tables embedded between instruction paragraphs are included in
+        the section description.
+
         Returns a dict mapping heading text to {level, description, keywords}
         """
-        standard = {}
+        from docx.oxml.ns import qn
+        from docx.text.paragraph import Paragraph as DocxParagraph
+        from docx.table import Table as DocxTable
 
-        # Get all headings from the template
+        w_ns = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+        standard = {}
         current_heading = None
         current_content = []
 
-        for para in self.template_doc.paragraphs:
-            if para.style.name.startswith('Heading'):
-                # Save previous heading with its content
-                if current_heading:
-                    description = self._wrap_list_items(current_content)
-                    # Extract keywords from heading and content
-                    heading_lower = current_heading['text'].lower()
-                    keywords = [w for w in heading_lower.split() if len(w) > 3]
-                    standard[current_heading['text']] = {
-                        'level': current_heading['level'],
-                        'description': description,
-                        'keywords': keywords
-                    }
-
-                # Start new heading
-                level = int(para.style.name.split()[-1]) if para.style.name[-1].isdigit() else 1
-                current_heading = {
-                    'text': para.text.strip(),
-                    'level': level
+        def save_heading():
+            if current_heading:
+                description = self._wrap_list_items(current_content)
+                heading_lower = current_heading['text'].lower()
+                keywords = [w for w in heading_lower.split() if len(w) > 3]
+                standard[current_heading['text']] = {
+                    'level': current_heading['level'],
+                    'description': description,
+                    'keywords': keywords
                 }
-                current_content = []
-            elif current_heading and para.text.strip():
-                is_list = para.style.name == 'List Paragraph'
-                para_html = self._para_to_html(para)
-                if is_list:
-                    para_html = f'<li>{para_html}</li>'
-                current_content.append(para_html)
 
-        # Don't forget the last heading
-        if current_heading:
-            description = self._wrap_list_items(current_content)
-            heading_lower = current_heading['text'].lower()
-            keywords = [w for w in heading_lower.split() if len(w) > 3]
-            standard[current_heading['text']] = {
-                'level': current_heading['level'],
-                'description': description,
-                'keywords': keywords
-            }
+        def table_to_html(tbl_element) -> str:
+            """Render a template table as a simple pipe-delimited HTML string."""
+            rows = tbl_element.findall(f'{{{w_ns}}}tr')
+            if not rows:
+                return ''
+            html_rows = []
+            for row in rows:
+                cells = row.findall(f'.//{{{w_ns}}}tc')
+                cell_texts = []
+                for cell in cells:
+                    # Join runs directly (no added spaces) — Word text runs are
+                    # already properly spaced within the original text.
+                    text = ''.join(
+                        t.text for t in cell.findall(f'.//{{{w_ns}}}t') if t.text
+                    ).strip()
+                    cell_texts.append(text)
+                html_rows.append(' | '.join(cell_texts))
+            return '<br>' + '<br>'.join(html_rows)
 
+        for child in self.template_doc.element.body:
+            tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+
+            if tag == 'p':
+                para = DocxParagraph(child, self.template_doc)
+                style_name = para.style.name if para.style else ''
+                text = para.text.strip()
+
+                if style_name.startswith('Heading'):
+                    save_heading()
+                    level = int(style_name.split()[-1]) if style_name[-1].isdigit() else 1
+                    current_heading = {'text': text, 'level': level}
+                    current_content = []
+                elif current_heading and text:
+                    is_list = style_name == 'List Paragraph'
+                    para_html = self._para_to_html(para)
+                    if is_list:
+                        para_html = f'<li>{para_html}</li>'
+                    current_content.append(para_html)
+
+            elif tag == 'tbl' and current_heading:
+                # Include sample tables in the section description
+                tbl_html = table_to_html(child)
+                if tbl_html:
+                    current_content.append(tbl_html)
+
+        save_heading()
         return standard
 
     def _get_section_description(self, section_name: str) -> str:
