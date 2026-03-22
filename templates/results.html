@@ -284,13 +284,13 @@
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-3 text-center">What would you like to do next?</h5>
                 <div class="row g-3">
-                    <div class="col-md-4 text-center">
+                    <div class="col-md-6 text-center">
                         <p class="small text-muted mb-2">Want to resubmit a revised version?</p>
                         <a href="{{ url_for('index') }}" class="btn btn-download btn-lg w-100">
                             <i class="bi bi-arrow-repeat"></i> Recheck Syllabus
                         </a>
                     </div>
-                    <div class="col-md-4 text-center">
+                    <div class="col-md-6 text-center">
                         <p class="small text-muted mb-2">Ready to submit your final version?</p>
                         {% if results.scan_id %}
                         <span id="save-repo-wrapper" class="d-block">
@@ -308,17 +308,21 @@
                         </button>
                         {% endif %}
                     </div>
-                    <div class="col-md-4 text-center">
-                        <p class="small text-muted mb-2">Download your annotated syllabus to review offline.</p>
-                        <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg w-100">
-                            <i class="bi bi-download"></i> Download Marked Document
-                        </a>
-                    </div>
                 </div>
                 <p class="text-muted text-center mt-3 mb-0 small">
                     <i class="bi bi-shield-check"></i> Your syllabus is <strong>not stored</strong> unless you click <em>Save to Repository</em>. Analysis is powered by OpenAI; your document content is shared with OpenAI during processing.
                 </p>
             </div>
+        </div>
+
+        <!-- Download Marked Document -->
+        <div class="text-center mb-4">
+            <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg">
+                <i class="bi bi-download"></i> Download Marked Document
+            </a>
+            <p class="text-muted mt-2 mb-0 small">
+                Includes comments and highlights for all issues, plus missing sections with ready-to-use language suggestions.
+            </p>
         </div>
 
         <!-- SECTION 1: Required Sections Analysis -->
