@@ -279,28 +279,46 @@
             </div>
         </div>
 
-        <!-- Download + Save Buttons -->
-        <div class="text-center mb-4">
-            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mb-2">
-                <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg">
-                    <i class="bi bi-download"></i> Download Marked Document
-                </a>
-                {% if results.scan_id %}
-                <span id="save-repo-wrapper">
-                    <button id="save-repo-btn" class="btn btn-download btn-lg"
-                            data-scan-id="{{ results.scan_id }}"
-                            data-filename="{{ results.filename }}"
-                            data-marked-filename="{{ results.marked_file }}"
-                            onclick="saveToRepository(this)">
-                        <i class="bi bi-archive"></i> Save to Repository
-                    </button>
-                </span>
-                {% endif %}
+        <!-- What's Next panel -->
+        <div class="card mb-4" style="border: 2px solid #ffbd00; border-radius: 12px;">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3 text-center">What would you like to do next?</h5>
+                <div class="row g-3">
+                    <div class="col-md-4 text-center">
+                        <p class="small text-muted mb-2">Want to resubmit a revised version?</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-download btn-lg w-100">
+                            <i class="bi bi-arrow-repeat"></i> Recheck Syllabus
+                        </a>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <p class="small text-muted mb-2">Ready to submit your final version?</p>
+                        {% if results.scan_id %}
+                        <span id="save-repo-wrapper" class="d-block">
+                            <button id="save-repo-btn" class="btn btn-download btn-lg w-100"
+                                    data-scan-id="{{ results.scan_id }}"
+                                    data-filename="{{ results.filename }}"
+                                    data-marked-filename="{{ results.marked_file }}"
+                                    onclick="saveToRepository(this)">
+                                <i class="bi bi-archive"></i> Save to Repository
+                            </button>
+                        </span>
+                        {% else %}
+                        <button class="btn btn-download btn-lg w-100" disabled>
+                            <i class="bi bi-archive"></i> Save to Repository
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <p class="small text-muted mb-2">Download your annotated syllabus to review offline.</p>
+                        <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg w-100">
+                            <i class="bi bi-download"></i> Download Marked Document
+                        </a>
+                    </div>
+                </div>
+                <p class="text-muted text-center mt-3 mb-0 small">
+                    <i class="bi bi-shield-check"></i> Your syllabus is <strong>not stored</strong> unless you click <em>Save to Repository</em>. Analysis is powered by OpenAI; your document content is shared with OpenAI during processing.
+                </p>
             </div>
-            <p class="text-muted mt-1 small">
-                The marked document includes comments and highlights showing all issues,
-                plus sections at the end with missing required content and ready-to-use language suggestions
-            </p>
         </div>
 
         <!-- SECTION 1: Required Sections Analysis -->
@@ -800,11 +818,8 @@
         </div>
 
         <!-- Actions -->
-        <div class="text-center mb-5 d-flex flex-wrap justify-content-center gap-2">
-            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
-                <i class="bi bi-arrow-left"></i> Check Another Document
-            </a>
-            <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline-secondary">
+        <div class="text-center mb-5">
+            <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-bar-chart-line"></i> Admin
             </a>
         </div>
