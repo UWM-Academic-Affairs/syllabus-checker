@@ -10,12 +10,12 @@
 - [ ] **Harden `SECRET_KEY`** — Current fallback is `'default-key-in-production'`. Ensure production always has a strong, random key set via environment variable; raise an error at startup if the default is detected in a non-debug environment.
 
 ### Medium Priority
-- [ ] **Sanitize error messages shown to users** — `flash(f'Error processing file: {str(e)}', 'error')` leaks internal exception details. Log the full traceback server-side; show a generic message to the user.
-- [ ] **Add rate limiting to upload route** — Each `/upload` request may trigger 4–5 OpenAI API calls, incurring cost. Add per-IP rate limiting (e.g., Flask-Limiter) to prevent abuse.
-- [ ] **Validate `repository/download` path parameter** — Route uses `<path:stored_filename>` which can include directory separators. `secure_filename()` is applied but add an explicit check that the resolved path stays within `REPO_FOLDER`.
-- [ ] **Validate department filter input** — `request.args.get('department', '')` is passed into DB queries. Although parameterized, add a whitelist check against known departments or a max-length guard.
-- [ ] **Set `SESSION_COOKIE_SECURE` and `SESSION_COOKIE_HTTPONLY`** — Ensure session cookies are sent only over HTTPS and are not accessible to JavaScript.
-- [ ] **Add `Content-Security-Policy` header** — Prevent XSS via a CSP header in nginx or Flask's `after_request` hook. At minimum: `default-src 'self'; script-src 'self' cdn.jsdelivr.net`.
+- [x] **Sanitize error messages shown to users** — exceptions logged server-side via `logging`; generic messages shown to users.
+- [x] **Add rate limiting to upload route** — Flask-Limiter added (10 uploads/hour per IP); `Flask-Limiter==3.5.0` in requirements.txt.
+- [x] **Validate `repository/download` path parameter** — `os.path.realpath` check added to ensure resolved path stays within `REPO_FOLDER`.
+- [x] **Validate department filter input** — capped at 100 characters and stripped before use.
+- [x] **Set `SESSION_COOKIE_SECURE` and `SESSION_COOKIE_HTTPONLY`** — both set; `SECURE` disabled only when `FLASK_ENV=development`.
+- [x] **Add `Content-Security-Policy` header** — set via `after_request` hook along with `X-Content-Type-Options` and `X-Frame-Options`.
 
 ### Low Priority
 - [ ] **Periodic temp-file cleanup** — Upload folder is cleaned on graceful exit but not on crashes. Add a startup sweep to remove files older than N hours, or use a cron job.

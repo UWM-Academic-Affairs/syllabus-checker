@@ -5,6 +5,8 @@ Flask app for uploading and checking Word documents for accessibility issues
 
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, Response
 import os
+import logging
+import traceback
 from werkzeug.utils import secure_filename
 from syllabus_checker import SyllabusChecker
 import tempfile
@@ -13,13 +15,46 @@ from datetime import datetime
 from dotenv import load_dotenv
 import markdown
 import analytics_db
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Load environment variables from .env file
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'syllabus-checker-secret-key-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Session cookie security
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Rate limiter — prevents abuse of the upload route (each request hits the OpenAI API)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri='memory://'
+)
+
+# Security headers
+@app.after_request
+def set_security_headers(response):
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' cdn.jsdelivr.net; "
+        "style-src 'self' cdn.jsdelivr.net 'unsafe-inline'; "
+        "font-src 'self' cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        "frame-ancestors 'none';"
+    )
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/tmp/syllabus_checker_uploads')
 app.config['REPO_FOLDER'] = os.environ.get('REPO_FOLDER',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'repository'))
@@ -45,6 +80,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
+@limiter.limit('10 per hour')
 def upload_file():
     """Handle file upload and run accessibility checks"""
     if 'file' not in request.files:
@@ -605,7 +641,8 @@ def upload_file():
         return render_template('results.html', results=results)
 
     except Exception as e:
-        flash(f'Error processing file: {str(e)}', 'error')
+        logger.error('Error processing upload: %s\n%s', e, traceback.format_exc())
+        flash('An error occurred while processing your file. Please try again or contact support if the problem persists.', 'error')
         return redirect(url_for('index'))
 
 @app.route('/download/<filename>')
@@ -624,7 +661,8 @@ def download_file(filename):
             flash('File not found', 'error')
             return redirect(url_for('index'))
     except Exception as e:
-        flash(f'Error downloading file: {str(e)}', 'error')
+        logger.error('Error downloading file %s: %s', filename, e)
+        flash('An error occurred while downloading the file.', 'error')
         return redirect(url_for('index'))
 
 @app.route('/repository/save', methods=['POST'])
@@ -665,7 +703,13 @@ def repository_save():
 def repository_download(stored_filename):
     """Download a syllabus from the repository."""
     safe_name = secure_filename(stored_filename)
-    file_path = os.path.join(app.config['REPO_FOLDER'], safe_name)
+    repo_folder = os.path.realpath(app.config['REPO_FOLDER'])
+    file_path = os.path.realpath(os.path.join(repo_folder, safe_name))
+    # Ensure the resolved path stays inside the repo folder (path traversal guard)
+    if not file_path.startswith(repo_folder + os.sep):
+        logger.warning('Path traversal attempt blocked: %s', stored_filename)
+        flash('Invalid file path.', 'error')
+        return redirect(url_for('admin_analytics'))
     if not os.path.exists(file_path):
         flash('File not found in repository.', 'error')
         return redirect(url_for('admin_analytics'))
@@ -700,8 +744,8 @@ def about():
 @app.route('/admin/analytics')
 def admin_analytics():
     """Admin analytics dashboard"""
-    # Get filter parameters
-    department_filter = request.args.get('department', '')
+    # Get filter parameters — cap length and strip to prevent oversized inputs
+    department_filter = request.args.get('department', '')[:100].strip()
     dept_param = department_filter if department_filter else None
 
     # Get overview statistics
@@ -791,7 +835,8 @@ def admin_analytics_delete():
         flash(f'Successfully deleted {deleted_count} scan(s)', 'success')
 
     except Exception as e:
-        flash(f'Error deleting scans: {str(e)}', 'error')
+        logger.error('Error deleting scans: %s', e)
+        flash('An error occurred while deleting the selected scans.', 'error')
 
     # Preserve department filter if present
     department = request.form.get('department_filter', '')
