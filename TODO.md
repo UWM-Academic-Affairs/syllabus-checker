@@ -18,9 +18,9 @@
 - [x] **Add `Content-Security-Policy` header** — set via `after_request` hook along with `X-Content-Type-Options` and `X-Frame-Options`.
 
 ### Low Priority
-- [ ] **Periodic temp-file cleanup** — Upload folder is cleaned on graceful exit but not on crashes. Add a startup sweep to remove files older than N hours, or use a cron job.
-- [ ] **Limit uploaded filename length** — `secure_filename()` doesn't enforce length. Very long filenames could cause filesystem issues; cap at ~100 characters.
-- [ ] **Audit `scan_ids` deletion endpoint** — Confirm that the integer-cast loop on posted `scan_ids` cannot be used to enumerate and bulk-delete records an unprivileged user shouldn't touch (depends on auth being added above).
+- [x] **Periodic temp-file cleanup** — `_sweep_old_uploads()` runs at startup and removes files older than 24 hours from the upload staging folder.
+- [x] **Limit uploaded filename length** — `safe_filename()` wrapper caps filenames at 100 characters (preserving extension) before saving.
+- [x] **Audit `scan_ids` deletion endpoint** — input capped at 50 IDs per request; each must be a positive integer; non-integer values are silently skipped.
 
 ---
 

@@ -74,6 +74,31 @@ def allowed_file(filename):
     """Check if file has allowed extension"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def safe_filename(filename, max_length=100):
+    """Sanitize and cap filename length while preserving the extension."""
+    name = secure_filename(filename)
+    if len(name) > max_length:
+        base, ext = os.path.splitext(name)
+        name = base[:max_length - len(ext)] + ext
+    return name
+
+def _sweep_old_uploads(folder, max_age_hours=24):
+    """Remove files older than max_age_hours from the upload staging folder."""
+    if not os.path.isdir(folder):
+        return
+    cutoff = datetime.now().timestamp() - max_age_hours * 3600
+    for fname in os.listdir(folder):
+        fpath = os.path.join(folder, fname)
+        try:
+            if os.path.isfile(fpath) and os.path.getmtime(fpath) < cutoff:
+                os.remove(fpath)
+                logger.info('Swept stale upload: %s', fname)
+        except OSError as e:
+            logger.warning('Could not remove stale upload %s: %s', fname, e)
+
+# Sweep leftover uploads from any previous unclean shutdown
+_sweep_old_uploads(app.config['UPLOAD_FOLDER'])
+
 @app.route('/')
 def index():
     """Main upload page"""
@@ -102,7 +127,7 @@ def upload_file():
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
         # Save uploaded file
-        filename = secure_filename(file.filename)
+        filename = safe_filename(file.filename)
         upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(upload_path)
 
@@ -819,15 +844,25 @@ def admin_analytics():
 def admin_analytics_delete():
     """Delete selected scan entries"""
     try:
-        # Get scan IDs from form
-        scan_ids = request.form.getlist('scan_ids')
+        # Get scan IDs from form — cap at 50 per request, require positive integers
+        raw_ids = request.form.getlist('scan_ids')[:50]
 
-        if not scan_ids:
+        if not raw_ids:
             flash('No scans selected for deletion', 'warning')
             return redirect(url_for('admin_analytics'))
 
-        # Convert to integers
-        scan_ids = [int(id) for id in scan_ids]
+        scan_ids = []
+        for raw in raw_ids:
+            try:
+                val = int(raw)
+                if val > 0:
+                    scan_ids.append(val)
+            except (ValueError, TypeError):
+                pass  # silently skip non-integer values
+
+        if not scan_ids:
+            flash('No valid scan IDs provided.', 'warning')
+            return redirect(url_for('admin_analytics'))
 
         # Delete the scans
         deleted_count = analytics_db.delete_scans(scan_ids)
