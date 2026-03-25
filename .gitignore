@@ -21,6 +21,9 @@ uploads/
 *.docx
 *_marked.docx
 
+# Allow the bundled syllabus template
+!assets/Uniform-Syllabus-Template-1.docx
+
 # IDE
 .vscode/
 .idea/

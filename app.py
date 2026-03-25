@@ -172,7 +172,9 @@ def upload_file():
 
         # Run accessibility checker
         # Note: SyllabusChecker expects (template_path, target_path)
-        checker = SyllabusChecker('uploads/Uniform-Syllabus-Template-1.docx', upload_path)
+        _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                      'assets', 'Uniform-Syllabus-Template-1.docx')
+        checker = SyllabusChecker(_template_path, upload_path)
 
         # Get section analysis using LLM (content-based analysis)
         section_analysis = checker.analyze_sections_with_llm()
