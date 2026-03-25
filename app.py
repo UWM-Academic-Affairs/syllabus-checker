@@ -6,7 +6,9 @@ Flask app for uploading and checking Word documents for accessibility issues
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, Response
 import os
 import logging
+import secrets
 import traceback
+from functools import wraps
 from werkzeug.utils import secure_filename
 from syllabus_checker import SyllabusChecker
 import tempfile
@@ -17,6 +19,7 @@ import markdown
 import analytics_db
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,13 +28,49 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'syllabus-checker-secret-key-change-in-production')
+
+_DEFAULT_SECRET = 'syllabus-checker-secret-key-change-in-production'
+_secret_key = os.environ.get('SECRET_KEY', _DEFAULT_SECRET)
+if _secret_key == _DEFAULT_SECRET and not os.environ.get('FLASK_ENV') == 'development':
+    logger.warning(
+        'SECRET_KEY is using the insecure default value. '
+        'Set a strong random SECRET_KEY environment variable in production.'
+    )
+app.secret_key = _secret_key
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Session cookie security
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
+
+csrf = CSRFProtect(app)
+
+# ── Admin authentication ──────────────────────────────────────────────────────
+# Set ADMIN_USERNAME and ADMIN_PASSWORD in .env to enable Basic Auth protection.
+# If neither is set, admin routes are unprotected (useful for local dev).
+
+def require_admin(f):
+    """HTTP Basic Auth guard for admin and restricted repository routes."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        admin_user = os.environ.get('ADMIN_USERNAME', '')
+        admin_pass = os.environ.get('ADMIN_PASSWORD', '')
+        if not admin_user or not admin_pass:
+            # No credentials configured — allow through (dev mode)
+            return f(*args, **kwargs)
+        auth = request.authorization
+        if auth and \
+           secrets.compare_digest(auth.username, admin_user) and \
+           secrets.compare_digest(auth.password, admin_pass):
+            return f(*args, **kwargs)
+        return Response(
+            'Admin access required.',
+            401,
+            {'WWW-Authenticate': 'Basic realm="Syllabus Checker Admin"'}
+        )
+    return decorated
 
 # Rate limiter — prevents abuse of the upload route (each request hits the OpenAI API)
 limiter = Limiter(
@@ -691,6 +730,7 @@ def download_file(filename):
         return redirect(url_for('index'))
 
 @app.route('/repository/save', methods=['POST'])
+@csrf.exempt   # called via fetch from results page; rate-limited at /upload
 def repository_save():
     """Copy the original and marked syllabi into the persistent repository."""
     scan_id = request.form.get('scan_id', type=int)
@@ -725,6 +765,7 @@ def repository_save():
 
 
 @app.route('/repository/download/<path:stored_filename>')
+@require_admin
 def repository_download(stored_filename):
     """Download a syllabus from the repository."""
     safe_name = secure_filename(stored_filename)
@@ -745,6 +786,8 @@ def repository_download(stored_filename):
 
 
 @app.route('/repository/delete/<int:repo_id>', methods=['POST'])
+@require_admin
+@csrf.exempt   # called via fetch from admin page; admin auth provides equivalent protection
 def repository_delete(repo_id):
     """Delete a repository entry and its stored files."""
     row = analytics_db.delete_from_repository(repo_id)
@@ -767,6 +810,7 @@ def about():
 # ============================================================
 
 @app.route('/admin/analytics')
+@require_admin
 def admin_analytics():
     """Admin analytics dashboard"""
     # Get filter parameters — cap length and strip to prevent oversized inputs
@@ -841,6 +885,7 @@ def admin_analytics():
                            saved_scan_ids=saved_scan_ids)
 
 @app.route('/admin/analytics/delete', methods=['POST'])
+@require_admin
 def admin_analytics_delete():
     """Delete selected scan entries"""
     try:
@@ -880,6 +925,7 @@ def admin_analytics_delete():
     return redirect(url_for('admin_analytics'))
 
 @app.route('/admin/analytics/csv')
+@require_admin
 def admin_analytics_csv():
     """Download all scans as CSV"""
     import csv

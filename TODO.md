@@ -3,11 +3,11 @@
 ## Security
 
 ### High Priority
-- [ ] **Add authentication to admin routes** — `/admin/analytics`, `/admin/analytics/delete`, and `/admin/analytics/csv` are fully public; anyone can view all scan records, delete them, or export the full CSV. Implement password protection (Flask-Login, HTTP Basic Auth via nginx, or a simple secret-token check).
-- [ ] **Add authentication to repository routes** — `/repository/save`, `/repository/delete`, and `/repository/download` are unauthenticated. A user can delete any repository entry by guessing an integer ID.
-- [ ] **Add CSRF protection** — POST routes (`/upload`, `/repository/save`, `/repository/delete`, `/admin/analytics/delete`) do not validate CSRF tokens. Add Flask-WTF or a manual `csrf_token` hidden field pattern.
-- [ ] **Verify `.env` is in `.gitignore`** — `OPENAI_API_KEY` and `SECRET_KEY` must not be committed. Confirm `.gitignore` excludes `.env` and rotate any keys if they were ever pushed.
-- [ ] **Harden `SECRET_KEY`** — Current fallback is `'default-key-in-production'`. Ensure production always has a strong, random key set via environment variable; raise an error at startup if the default is detected in a non-debug environment.
+- [x] **Add authentication to admin routes** — `@require_admin` HTTP Basic Auth decorator applied to all `/admin/*` routes; credentials set via `ADMIN_USERNAME`/`ADMIN_PASSWORD` env vars (no-op if unset, for local dev).
+- [x] **Add authentication to repository routes** — `@require_admin` applied to `/repository/delete` and `/repository/download`; `/repository/save` stays public (any uploader may save their own syllabus).
+- [x] **Add CSRF protection** — Flask-WTF `CSRFProtect` enabled globally; `csrf_token()` added to upload and admin-delete forms; AJAX-only routes (`/repository/save`, `/repository/delete`) exempted with `@csrf.exempt`.
+- [x] **Verify `.env` is in `.gitignore`** — confirmed present; `.env` and `.env.local` both excluded.
+- [x] **Harden `SECRET_KEY`** — startup warning logged if default key detected outside development mode.
 
 ### Medium Priority
 - [x] **Sanitize error messages shown to users** — exceptions logged server-side via `logging`; generic messages shown to users.

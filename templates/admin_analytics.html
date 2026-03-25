@@ -395,6 +395,7 @@
 
             {% if recent_scans %}
             <form id="delete-scans-form" method="POST" action="{{ url_for('admin_analytics_delete') }}" onsubmit="return confirmDelete()">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="department_filter" value="{{ department_filter }}">
                 <div class="table-responsive">
                     <table class="table table-hover table-sm">
