@@ -27,10 +27,10 @@
 ## Automated Tests
 
 ### Setup
-- [ ] Add `pytest` and `pytest-flask` to `requirements.txt` (or a separate `requirements-dev.txt`)
-- [ ] Create `tests/` directory with `conftest.py` that sets up a Flask test client, a temp upload folder, and a temp SQLite DB
-- [ ] Add sample DOCX fixtures to `tests/fixtures/` (minimal valid, malformed, missing sections, template itself)
-- [ ] Add a mock for OpenAI API calls (e.g., `unittest.mock.patch` or `pytest-mock`) so tests run without API keys
+- [x] Add `pytest` and `pytest-flask` to `requirements.txt` (or a separate `requirements-dev.txt`)
+- [x] Create `tests/` directory with `conftest.py` that sets up a Flask test client, a temp upload folder, and a temp SQLite DB
+- [x] Add sample DOCX fixtures to `tests/fixtures/` (minimal valid, malformed, missing sections, template itself)
+- [x] Add a mock for OpenAI API calls (e.g., `unittest.mock.patch` or `pytest-mock`) so tests run without API keys
 
 ### File Upload & Processing Pipeline
 - [ ] Valid `.docx` upload returns 200 and renders results page
