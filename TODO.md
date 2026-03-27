@@ -33,14 +33,14 @@
 - [x] Add a mock for OpenAI API calls (e.g., `unittest.mock.patch` or `pytest-mock`) so tests run without API keys
 
 ### File Upload & Processing Pipeline
-- [ ] Valid `.docx` upload returns 200 and renders results page
-- [ ] Non-`.docx` upload (`.pdf`, `.txt`, `.exe`) is rejected with a user-friendly error
-- [ ] Upload larger than 16 MB is rejected
-- [ ] Empty file upload is rejected
-- [ ] Upload with no file part in the request is rejected
-- [ ] Marked document is created at the expected path after upload
-- [ ] Scan record is written to the database after a successful upload
-- [ ] Processing error (corrupted DOCX) is caught and flashes an error without a 500
+- [x] Valid `.docx` upload returns 200 and renders results page
+- [x] Non-`.docx` upload (`.pdf`, `.txt`, `.exe`) is rejected with a user-friendly error
+- [x] Upload larger than 16 MB is rejected
+- [x] Empty file upload is rejected
+- [x] Upload with no file part in the request is rejected
+- [x] Marked document is created at the expected path after upload
+- [x] Scan record is written to the database after a successful upload
+- [x] Processing error (corrupted DOCX) is caught and flashes an error without a 500
 
 ### Analytics Database (`analytics_db.py`)
 - [ ] `store_scan_result()` inserts a row and returns a valid integer scan_id
