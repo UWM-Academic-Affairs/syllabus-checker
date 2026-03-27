@@ -16,7 +16,7 @@ os.environ.setdefault('FLASK_ENV', 'development')
 os.environ.pop('OPENAI_API_KEY', None)
 
 import analytics_db  # noqa: E402 — must come after env setup
-from app import app as flask_app  # noqa: E402
+from app import app as flask_app, limiter as flask_limiter  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -149,15 +149,18 @@ def app(tmp_path, monkeypatch):
         'WTF_CSRF_ENABLED': False,
         'UPLOAD_FOLDER': upload_dir,
         'REPO_FOLDER': repo_dir,
-        'RATELIMIT_ENABLED': False,
     })
+
+    # Flask-Limiter reads .enabled as an instance attribute (set once at
+    # init_app time), so the RATELIMIT_ENABLED config key has no effect after
+    # startup.  Patch the attribute directly instead.
+    monkeypatch.setattr(flask_limiter, 'enabled', False)
 
     yield flask_app
 
     flask_app.config.update({
         'TESTING': False,
         'WTF_CSRF_ENABLED': True,
-        'RATELIMIT_ENABLED': True,
     })
 
 
