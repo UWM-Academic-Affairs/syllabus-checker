@@ -43,18 +43,18 @@
 - [x] Processing error (corrupted DOCX) is caught and flashes an error without a 500
 
 ### Analytics Database (`analytics_db.py`)
-- [ ] `store_scan_result()` inserts a row and returns a valid integer scan_id
-- [ ] `get_all_scans()` returns rows in descending date order
-- [ ] `get_all_scans(department='X')` filters correctly
-- [ ] `delete_scans([id1, id2])` removes exactly those rows and leaves others intact
-- [ ] `get_scan_count()` returns the correct total
-- [ ] `save_to_repository()` inserts a row with the correct filenames
-- [ ] `delete_from_repository()` removes the row and returns stored filenames
-- [ ] `is_saved(scan_id)` returns True/False correctly
-- [ ] `get_saved_syllabi()` returns rows joined with scan metadata
-- [ ] Database schema migration (new column added) does not fail on an existing DB
-- [ ] `get_trends_by_month()` returns one row per month and correct issue counts
-- [ ] `get_department_summary()` aggregates correctly across multiple scans
+- [x] `store_scan_result()` inserts a row and returns a valid integer scan_id
+- [x] `get_all_scans()` returns rows in descending date order
+- [x] `get_all_scans(department='X')` filters correctly
+- [x] `delete_scans([id1, id2])` removes exactly those rows and leaves others intact
+- [x] `get_scan_count()` returns the correct total
+- [x] `save_to_repository()` inserts a row with the correct filenames
+- [x] `delete_from_repository()` removes the row and returns stored filenames
+- [x] `is_saved(scan_id)` returns True/False correctly
+- [x] `get_saved_syllabi()` returns rows joined with scan metadata
+- [x] Database schema migration (new column added) does not fail on an existing DB
+- [x] `get_trends_by_month()` returns one row per month and correct issue counts
+- [x] `get_department_summary()` aggregates correctly across multiple scans
 
 ### Repository Routes
 - [ ] `POST /repository/save` copies original file to repo folder
