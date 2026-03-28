@@ -73,26 +73,43 @@ def init_db():
     existing_columns = [col[1] for col in cursor.fetchall()]
 
     new_columns = [
+        ("course_subject", "TEXT"),
+        ("course_number", "TEXT"),
         ("course_title", "TEXT"),
         ("semester", "TEXT"),
+        ("missing_sections_count", "INTEGER DEFAULT 0"),
+        ("accessibility_issues_count", "INTEGER DEFAULT 0"),
+        ("category_counts", "JSON"),
+        ("missing_sections_summary", "TEXT"),
+        ("growth_mindset_status", "TEXT"),
         ("growth_mindset_score", "INTEGER"),
-        ("quality_issues_count", "INTEGER DEFAULT 0"),
-        ("metadata_extraction_status", "TEXT"),
+        ("language_tone_summary", "TEXT"),
         ("language_tone_subcategories", "JSON"),
-        ("clarity_quality_subcategories", "JSON")
+        ("quality_analysis_status", "TEXT"),
+        ("quality_issues_count", "INTEGER DEFAULT 0"),
+        ("clarity_quality_summary", "TEXT"),
+        ("clarity_quality_subcategories", "JSON"),
+        ("accessibility_summary", "TEXT"),
+        ("metadata_extraction_status", "TEXT"),
     ]
 
     for col_name, col_type in new_columns:
         if col_name not in existing_columns:
             try:
                 cursor.execute(f"ALTER TABLE scans ADD COLUMN {col_name} {col_type}")
-            except:
+            except Exception:
                 pass  # Column might already exist
 
-    # Create index for common queries
+    # Re-read columns after migration before creating indexes
+    cursor.execute("PRAGMA table_info(scans)")
+    existing_columns = [col[1] for col in cursor.fetchall()]
+
+    # Create index for common queries (guard against extremely old schemas)
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_scan_date ON scans(scan_date)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_department ON scans(department)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_course_subject ON scans(course_subject)')
+    if 'department' in existing_columns:
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_department ON scans(department)')
+    if 'course_subject' in existing_columns:
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_course_subject ON scans(course_subject)')
 
     # Create repository table for saved syllabi
     cursor.execute('''

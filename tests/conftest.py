@@ -127,6 +127,15 @@ def template_path():
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
+def db(tmp_path, monkeypatch):
+    """Isolated analytics DB (no Flask app needed) for pure DB unit tests."""
+    db_path = str(tmp_path / 'test.db')
+    monkeypatch.setattr(analytics_db, 'DATABASE_PATH', db_path)
+    analytics_db.init_db()
+    return db_path
+
+
+@pytest.fixture
 def app(tmp_path, monkeypatch):
     """Isolated Flask app instance with a temp DB, upload dir, and repo dir."""
     upload_dir = str(tmp_path / 'uploads')
