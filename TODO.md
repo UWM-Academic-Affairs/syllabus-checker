@@ -57,15 +57,15 @@
 - [x] `get_department_summary()` aggregates correctly across multiple scans
 
 ### Repository Routes
-- [ ] `POST /repository/save` copies original file to repo folder
-- [ ] `POST /repository/save` copies marked file to repo folder when present
-- [ ] `POST /repository/save` with missing filename returns 400
-- [ ] `POST /repository/save` when original file is gone returns 400
-- [ ] `GET /repository/download/<name>` streams the correct file
-- [ ] `GET /repository/download/<name>` for missing file redirects with error
-- [ ] `POST /repository/delete/<id>` removes the DB row and both files
-- [ ] `POST /repository/delete/<id>` for non-existent id returns gracefully
-- [ ] Path traversal attempt in download URL is neutralized (e.g., `../../../etc/passwd`)
+- [x] `POST /repository/save` copies original file to repo folder
+- [x] `POST /repository/save` copies marked file to repo folder when present
+- [x] `POST /repository/save` with missing filename returns 400
+- [x] `POST /repository/save` when original file is gone returns 400
+- [x] `GET /repository/download/<name>` streams the correct file
+- [x] `GET /repository/download/<name>` for missing file redirects with error
+- [x] `POST /repository/delete/<id>` removes the DB row and both files
+- [x] `POST /repository/delete/<id>` for non-existent id returns gracefully
+- [x] Path traversal attempt in download URL is neutralized (e.g., `../../../etc/passwd`)
 
 ### Admin Routes
 - [ ] `GET /admin/analytics` returns 200 and contains scan statistics
