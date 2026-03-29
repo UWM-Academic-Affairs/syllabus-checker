@@ -152,6 +152,9 @@ def app(tmp_path, monkeypatch):
 
     # Remove any real API key so no OpenAI calls can escape.
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    # Unset admin credentials so @require_admin passes through (dev-mode bypass).
+    monkeypatch.delenv('ADMIN_USERNAME', raising=False)
+    monkeypatch.delenv('ADMIN_PASSWORD', raising=False)
 
     flask_app.config.update({
         'TESTING': True,
