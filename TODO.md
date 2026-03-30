@@ -68,12 +68,12 @@
 - [x] Path traversal attempt in download URL is neutralized (e.g., `../../../etc/passwd`)
 
 ### Admin Routes
-- [ ] `GET /admin/analytics` returns 200 and contains scan statistics
-- [ ] `GET /admin/analytics?department=X` filters the displayed scans
-- [ ] `GET /admin/analytics/csv` returns a valid CSV with correct headers
-- [ ] `POST /admin/analytics/delete` with valid scan ids removes them from DB
-- [ ] `POST /admin/analytics/delete` with non-integer id returns an error, not a 500
-- [ ] Repository tab shows saved syllabi with correct counts
+- [x] `GET /admin/analytics` returns 200 and contains scan statistics
+- [x] `GET /admin/analytics?department=X` filters the displayed scans
+- [x] `GET /admin/analytics/csv` returns a valid CSV with correct headers
+- [x] `POST /admin/analytics/delete` with valid scan ids removes them from DB
+- [x] `POST /admin/analytics/delete` with non-integer id returns an error, not a 500
+- [x] Repository tab shows saved syllabi with correct counts
 
 ### SyllabusChecker — Pattern Detection (`syllabus_checker.py`)
 - [ ] `_detect_content_patterns()` detects Instructor section when email present
