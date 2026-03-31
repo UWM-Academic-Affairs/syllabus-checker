@@ -76,16 +76,16 @@
 - [x] Repository tab shows saved syllabi with correct counts
 
 ### SyllabusChecker — Pattern Detection (`syllabus_checker.py`)
-- [ ] `_detect_content_patterns()` detects Instructor section when email present
-- [ ] `_detect_content_patterns()` detects Grading Scale from letter-grade table
-- [ ] `_detect_content_patterns()` detects Calendar when date/week patterns present
-- [ ] `_detect_content_patterns()` does NOT flag template placeholders as real content
-- [ ] `_find_heading_for_content()` returns closest pseudo-heading over distant document title
-- [ ] `_find_heading_for_content()` does NOT let table-cell Word headings override top-level headings
-- [ ] `_extract_headings_with_positions()` correctly sets `is_top_level` vs table-cell headings
-- [ ] `check_missing_sections()` lists sections absent from a minimal syllabus
-- [ ] `check_missing_sections()` does NOT flag present sections as missing
-- [ ] `_get_section_description('Grading Scale')` includes sample grade table rows
+- [x] `_detect_content_patterns()` detects Instructor section when email present
+- [x] `_detect_content_patterns()` detects Grading Scale from letter-grade table
+- [x] `_detect_content_patterns()` detects Calendar when date/week patterns present
+- [x] `_detect_content_patterns()` does NOT flag template placeholders as real content
+- [x] `_find_heading_for_content()` returns closest pseudo-heading over distant document title
+- [x] `_find_heading_for_content()` does NOT let table-cell Word headings override top-level headings
+- [x] `_extract_headings_with_positions()` correctly sets `is_top_level` vs table-cell headings
+- [x] `check_missing_sections()` lists sections absent from a minimal syllabus
+- [x] `check_missing_sections()` does NOT flag present sections as missing
+- [x] `_get_section_description('Grading Scale')` includes sample grade table rows
 
 ### SyllabusChecker — Accessibility Checks
 - [ ] Missing table header flagged as an issue
