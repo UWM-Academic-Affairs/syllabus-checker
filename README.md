@@ -85,12 +85,18 @@ Quick summary:
 
 ## Configuration
 
-Environment variables (set in `.env` for production):
+Copy `.env.example` (or create `.env`) in the project root and set the variables below.
+See also [CONFIGURATION.md](CONFIGURATION.md) for full details and recommended values.
 
-```bash
-SECRET_KEY=<generate-with-secrets.token_hex()>
-UPLOAD_FOLDER=/var/www/syllabus-checker/uploads
-```
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SECRET_KEY` | **Yes (prod)** | insecure default | Flask session signing key. Generate with `python -c "import secrets; print(secrets.token_hex(32))"`. |
+| `OPENAI_API_KEY` | No | *(unset)* | Enables LLM-powered checks (metadata extraction, growth-mindset analysis, quality analysis). All checks still run without it. |
+| `UPLOAD_FOLDER` | No | `/tmp/syllabus_checker_uploads` | Directory where uploaded `.docx` files are staged. Must be writable by the web process. |
+| `REPO_FOLDER` | No | `./repository` | Directory where saved syllabi are stored permanently. |
+| `ADMIN_USERNAME` | No | *(unset)* | HTTP Basic Auth username for `/admin/*` routes. Leave unset to disable auth (local dev). |
+| `ADMIN_PASSWORD` | No | *(unset)* | HTTP Basic Auth password for `/admin/*` routes. |
+| `FLASK_ENV` | No | `production` | Set to `development` to disable secure cookies, suppress the `SECRET_KEY` warning, and enable Flask debug mode. |
 
 ## API / Command Line
 

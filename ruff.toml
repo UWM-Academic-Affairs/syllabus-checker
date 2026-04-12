@@ -1,0 +1,16 @@
+# ruff configuration for the Syllabus Checker project
+# See https://docs.astral.sh/ruff/configuration/
+
+line-length = 120
+
+[lint.per-file-ignores]
+# syllabus_checker.py is a large existing file that uses bare `except` blocks
+# intentionally for defensive XML parsing.  Fix incrementally; don't block CI.
+"syllabus_checker.py" = [
+    "E722",   # bare `except` — intentional defensive XML parsing
+    "F841",   # local variable assigned but never used
+    "F541",   # f-string without placeholders
+    "E712",   # comparison to True/False with ==
+    "E741",   # ambiguous variable name
+    "F401",   # imported but unused
+]

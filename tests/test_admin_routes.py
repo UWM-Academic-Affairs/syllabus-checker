@@ -8,7 +8,6 @@ Tests for admin routes:
 
 import csv
 import io
-import pytest
 import analytics_db
 
 

@@ -6,7 +6,6 @@ Tests for the repository routes:
 """
 
 import os
-import pytest
 import analytics_db
 
 

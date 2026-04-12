@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Results - Syllabus Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #000000 0%, #2a2a2a 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border-bottom: 3px solid #ffbd00;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 2px solid #ffbd00;
+        }
+        .table thead th {
+            background-color: #000;
+            color: #ffbd00;
+        }
+        .btn-primary {
+            background: #ffbd00;
+            color: #000000;
+            border: 2px solid #000000;
+            font-weight: 600;
+            border-radius: 25px;
+        }
+        .btn-primary:hover {
+            background: #000000;
+            color: #ffbd00;
+            border-color: #ffbd00;
+        }
+        .save-btn {
+            background: #ffbd00;
+            color: #000;
+            border: 2px solid #000;
+            font-weight: 600;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .save-btn:hover {
+            background: #000;
+            color: #ffbd00;
+            border-color: #ffbd00;
+        }
+        .save-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand mb-0 h1" href="{{ url_for('index') }}" style="color: #ffbd00; font-weight: 700; text-decoration: none;">
+                📄 Syllabus Checker
+            </a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex align-items-center mb-3">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-3">
+                <i class="bi bi-arrow-left"></i> Back to Upload
+            </a>
+            <h2 class="mb-0">Batch Results</h2>
+        </div>
+
+        <p class="text-muted mb-4">
+            Processed <strong>{{ batch_results | length }}</strong> file{{ 's' if batch_results | length != 1 else '' }}.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Missing Sections</th>
+                                <th>Accessibility Issues</th>
+                                <th>Total Issues</th>
+                                <th>Download Marked Doc</th>
+                                <th>Save to Repository</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in batch_results %}
+                            <tr>
+                                <td class="align-middle">
+                                    <i class="bi bi-file-earmark-word text-primary me-1"></i>
+                                    <strong>{{ item.filename }}</strong>
+                                </td>
+                                {% if item.get('error') %}
+                                <td colspan="5" class="align-middle">
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-exclamation-triangle me-1"></i> {{ item.error }}
+                                    </span>
+                                </td>
+                                {% else %}
+                                <td class="align-middle">
+                                    {% set ms = item.missing_sections | length %}
+                                    <span class="badge {% if ms == 0 %}bg-success{% elif ms < 3 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ ms }}
+                                    </span>
+                                </td>
+                                <td class="align-middle">
+                                    {% set ai = item.total_issues - (item.missing_sections | length) %}
+                                    <span class="badge {% if ai == 0 %}bg-success{% elif ai < 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ ai }}
+                                    </span>
+                                </td>
+                                <td class="align-middle">
+                                    {% set ti = item.total_issues %}
+                                    <span class="badge {% if ti == 0 %}bg-success{% elif ti < 5 %}bg-warning text-dark{% else %}bg-danger{% endif %} fs-6">
+                                        {{ ti }}
+                                    </span>
+                                </td>
+                                <td class="align-middle">
+                                    {% if item.marked_file %}
+                                    <a href="{{ url_for('download_file', filename=item.marked_file) }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download"></i> Marked Doc
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle">
+                                    {% if item.get('scan_id') %}
+                                    <span id="save-wrapper-{{ item.scan_id }}">
+                                        <button class="save-btn"
+                                                data-scan-id="{{ item.scan_id }}"
+                                                data-filename="{{ item.filename }}"
+                                                data-marked-filename="{{ item.marked_file or '' }}"
+                                                onclick="batchSaveToRepository(this)">
+                                            <i class="bi bi-archive"></i> Save
+                                        </button>
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="bi bi-cloud-upload"></i> Upload More Files
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function batchSaveToRepository(btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving…';
+            const data = new FormData();
+            data.append('scan_id', btn.dataset.scanId);
+            data.append('filename', btn.dataset.filename);
+            data.append('marked_filename', btn.dataset.markedFilename);
+            fetch('{{ url_for("repository_save") }}', { method: 'POST', body: data })
+                .then(r => {
+                    const wrapper = document.getElementById('save-wrapper-' + btn.dataset.scanId);
+                    if (r.ok || r.redirected) {
+                        wrapper.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i> Saved</span>';
+                    } else {
+                        wrapper.innerHTML = '<span class="text-danger small">Save failed</span>';
+                    }
+                })
+                .catch(() => {
+                    const wrapper = document.getElementById('save-wrapper-' + btn.dataset.scanId);
+                    wrapper.innerHTML = '<span class="text-danger small">Save failed</span>';
+                });
+        }
+    </script>
+</body>
+</html>

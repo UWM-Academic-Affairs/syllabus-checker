@@ -4,7 +4,6 @@ Each test gets a fresh in-memory DB via the `db` fixture from conftest.
 """
 
 import sqlite3
-import pytest
 import analytics_db
 
 

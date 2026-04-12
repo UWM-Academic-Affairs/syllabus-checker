@@ -5,7 +5,6 @@ Stores scan results for reporting and trend analysis
 
 import sqlite3
 import os
-from datetime import datetime
 from typing import List, Dict, Optional
 import json
 
@@ -129,7 +128,7 @@ def init_db():
     if 'stored_marked_filename' not in saved_cols:
         try:
             cursor.execute("ALTER TABLE saved_syllabi ADD COLUMN stored_marked_filename TEXT")
-        except:
+        except Exception:
             pass
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_saved_at ON saved_syllabi(saved_at)')
 
@@ -779,6 +778,39 @@ def delete_from_repository(repo_id: int) -> Optional[Dict]:
     if row:
         cursor.execute('DELETE FROM saved_syllabi WHERE id = ?', (repo_id,))
         conn.commit()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_repo_entries_by_filename(original_filename: str) -> List[Dict]:
+    """Return all saved_syllabi rows with the given original_filename, newest first."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT ss.id, ss.stored_filename, ss.original_filename, ss.saved_at,
+               s.instructor_name, s.course_subject, s.course_number, s.semester
+        FROM saved_syllabi ss
+        LEFT JOIN scans s ON ss.scan_id = s.id
+        WHERE ss.original_filename = ?
+        ORDER BY ss.saved_at DESC
+    ''', (original_filename,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_repo_entry(repo_id: int) -> Optional[Dict]:
+    """Return a single saved_syllabi row by id."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT ss.id, ss.stored_filename, ss.stored_marked_filename, ss.original_filename, ss.saved_at,
+               s.instructor_name, s.course_subject, s.course_number, s.semester
+        FROM saved_syllabi ss
+        LEFT JOIN scans s ON ss.scan_id = s.id
+        WHERE ss.id = ?
+    ''', (repo_id,))
+    row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
