@@ -279,6 +279,32 @@
             </div>
         </div>
 
+        {% if results.scan_id %}
+        <!-- Feedback -->
+        <div class="card mb-4" style="border: 1px solid #dee2e6; border-radius: 12px;">
+            <div class="card-body p-4 text-center" id="feedbackCard">
+                <h6 class="fw-bold mb-3"><i class="bi bi-chat-square-dots"></i> Was this analysis helpful?</h6>
+                <div id="feedbackButtons">
+                    <button class="btn btn-outline-success me-2" onclick="submitFeedback('up')">
+                        <i class="bi bi-hand-thumbs-up"></i> Yes
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="submitFeedback('down')">
+                        <i class="bi bi-hand-thumbs-down"></i> No
+                    </button>
+                </div>
+                <div id="feedbackComment" style="display:none;" class="mt-3">
+                    <textarea id="feedbackText" class="form-control mb-2" rows="2"
+                              placeholder="What was inaccurate or unhelpful? (optional)"></textarea>
+                    <button class="btn btn-sm btn-primary" onclick="submitFeedbackWithComment()">Send</button>
+                    <button class="btn btn-sm btn-link" onclick="cancelFeedback()">Cancel</button>
+                </div>
+                <div id="feedbackThanks" style="display:none;" class="text-success">
+                    <i class="bi bi-check-circle"></i> Thanks for your feedback!
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- What's Next panel -->
         <div class="card mb-4" style="border: 2px solid #ffbd00; border-radius: 12px;">
             <div class="card-body p-4">
@@ -846,6 +872,37 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+    let feedbackRating = null;
+    function submitFeedback(rating) {
+        feedbackRating = rating;
+        if (rating === 'down') {
+            document.getElementById('feedbackButtons').style.display = 'none';
+            document.getElementById('feedbackComment').style.display = 'block';
+        } else {
+            sendFeedback(rating, '');
+        }
+    }
+    function submitFeedbackWithComment() {
+        const comment = document.getElementById('feedbackText').value;
+        sendFeedback(feedbackRating, comment);
+    }
+    function cancelFeedback() {
+        feedbackRating = null;
+        document.getElementById('feedbackButtons').style.display = 'block';
+        document.getElementById('feedbackComment').style.display = 'none';
+    }
+    function sendFeedback(rating, comment) {
+        const data = new FormData();
+        data.append('scan_id', '{{ results.scan_id }}');
+        data.append('rating', rating);
+        data.append('comment', comment);
+        fetch('/feedback', { method: 'POST', body: data })
+            .finally(() => {
+                document.getElementById('feedbackButtons').style.display = 'none';
+                document.getElementById('feedbackComment').style.display = 'none';
+                document.getElementById('feedbackThanks').style.display = 'block';
+            });
+    }
     function saveToRepository(btn) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving…';

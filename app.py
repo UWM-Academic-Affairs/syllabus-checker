@@ -918,6 +918,7 @@ def admin_analytics():
     # Repository data
     saved_syllabi = analytics_db.get_saved_syllabi()
     saved_scan_ids = analytics_db.get_saved_scan_ids()
+    feedback_summary = analytics_db.get_feedback_summary()
 
     # Group by original_filename to find versions for diff
     from collections import defaultdict
@@ -950,6 +951,7 @@ def admin_analytics():
                            total_scans=total_scans,
                            saved_syllabi=saved_syllabi,
                            saved_scan_ids=saved_scan_ids,
+                           feedback_summary=feedback_summary,
                            app_version=__version__)
 
 @app.route('/admin/analytics/delete', methods=['POST'])
@@ -1061,6 +1063,21 @@ def admin_analytics_csv():
 def healthz():
     from flask import jsonify
     return jsonify({'version': __version__, 'status': 'ok'})
+
+
+@app.route('/feedback', methods=['POST'])
+@csrf.exempt
+def submit_feedback():
+    """Store thumbs-up/down feedback for a scan result."""
+    scan_id = request.form.get('scan_id', type=int)
+    rating = request.form.get('rating', '').strip()
+    comment = request.form.get('comment', '').strip()[:500]  # cap at 500 chars
+
+    if not scan_id or rating not in ('up', 'down'):
+        return ('Invalid feedback.', 400)
+
+    analytics_db.store_feedback(scan_id, rating, comment or None)
+    return ('', 204)
 
 
 if __name__ == '__main__':

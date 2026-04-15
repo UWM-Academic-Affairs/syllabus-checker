@@ -132,6 +132,17 @@ def init_db():
             pass
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_saved_at ON saved_syllabi(saved_at)')
 
+    # Create feedback table for thumbs-up/down ratings
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id INTEGER REFERENCES scans(id) ON DELETE CASCADE,
+            rating TEXT CHECK(rating IN ('up', 'down')),
+            comment TEXT,
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -813,6 +824,34 @@ def get_repo_entry(repo_id: int) -> Optional[Dict]:
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def store_feedback(scan_id: int, rating: str, comment: str = None) -> bool:
+    """Store thumbs-up/down feedback for a scan. Returns True on success."""
+    if rating not in ('up', 'down'):
+        return False
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'INSERT INTO feedback (scan_id, rating, comment) VALUES (?, ?, ?)',
+            (scan_id, rating, comment or None)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+
+def get_feedback_summary() -> Dict:
+    """Return total up/down counts across all feedback."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT rating, COUNT(*) as cnt FROM feedback GROUP BY rating")
+    rows = {row['rating']: row['cnt'] for row in cursor.fetchall()}
+    conn.close()
+    return {'up': rows.get('up', 0), 'down': rows.get('down', 0)}
 
 
 # Initialize database on module load
