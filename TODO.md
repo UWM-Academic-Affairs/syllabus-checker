@@ -137,7 +137,7 @@
 ## Deployment & Operations
 
 - [x] Add a health-check endpoint `GET /healthz` returning 200 + `{"version": __version__, "status": "ok"}` — useful for uptime monitoring and confirming deployments landed
-- [ ] Add a CD step to the GitHub Actions workflow — on merge to `main`, SSH to the server, `git pull`, and restart the gunicorn service
+- [x] Add a CD step to the GitHub Actions workflow — on merge to `main`, SSH to the server, `git pull`, and restart the gunicorn service
 - [x] Add `dependabot.yml` to auto-open PRs when `requirements.txt` dependencies go stale
 
 ---
@@ -146,6 +146,27 @@
 
 - [x] Batch upload — allow instructors to upload multiple `.docx` files at once and receive a summary table across all syllabi; new `/batch-upload` route, `batch_results.html` summary table, Single/Batch toggle on index page
 - [x] Diff view in the admin repository — show what changed between a newly uploaded syllabus and its previously saved version; new `/repository/diff/<id>/<prev_id>` route, `diff.html` side-by-side view, auto-detected previous versions shown with a compare button in the repository tab
+
+---
+
+## Operations & Monitoring
+
+- [x] **Uptime monitoring** — UptimeRobot monitoring `/healthz` every 5 minutes; public status page at https://stats.uptimerobot.com/5MCfonWblL
+- [x] **CD step in GitHub Actions** — on merge to `main`, SSH to server, `git pull`, `pip install -r requirements.txt`, restart gunicorn
+- [x] **Log rotation** — `/etc/logrotate.d/syllabus-checker` configured; gunicorn writing to `/var/log/syllabus-checker/access.log` and `error.log`
+- [x] **Automated DB backups** — `scripts/backup.sh` + `scripts/install-cron.sh` written; run `install-cron.sh` on server to activate daily 2am cron
+- [ ] **nginx + TLS audit** — confirm app is behind nginx proxy (not exposed on port 5001), HTTP redirects to HTTPS, certificate is valid Let's Encrypt (not self-signed)
+
+## Security (Production)
+
+- [ ] **`.env` audit** — verify all required env vars are set to non-default production values on the server (`SECRET_KEY`, `OPENAI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `FLASK_ENV`)
+- [x] **Malformed DOCX upload testing** — automated tests added in `tests/test_malformed_uploads.py` (zip bomb, corrupted bytes, empty zip, XML bomb, PNG-renamed-to-docx); all 5 pass
+- [x] **Review OpenAI data handling disclosure** — disclosure added to upload form, results page, and batch results page; links to OpenAI privacy policy
+
+## User Experience
+
+- [x] **User feedback on results** — thumbs-up/thumbs-down on results page so instructors can flag false positives; stored in `feedback` table; `POST /feedback` endpoint
+- [x] **Department trends dashboard** — Trends & Departments tab in admin analytics with department bar chart, 6-month issue trends line chart, and feedback summary card (Chart.js, UWM colors)
 
 ---
 
