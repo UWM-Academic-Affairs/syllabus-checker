@@ -10,7 +10,6 @@ Tests for SyllabusChecker check methods not covered elsewhere:
 import os
 import pytest
 from docx import Document
-from docx.shared import Pt
 
 from syllabus_checker import SyllabusChecker
 
@@ -198,7 +197,6 @@ class TestCheckLineSpacing:
     def checker_tight_spacing(self, tmp_path_factory):
         """DOCX paragraph with line spacing set to 0.8 (below 1.15 threshold)."""
         def build(path):
-            from docx.shared import Pt as _Pt
             doc = Document()
             para = doc.add_paragraph('This paragraph has very tight line spacing that is hard to read.')
             para.paragraph_format.line_spacing = 0.8

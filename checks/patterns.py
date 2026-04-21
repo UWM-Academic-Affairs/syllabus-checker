@@ -6,9 +6,8 @@ PatternsMixin — section/pattern detection methods for SyllabusChecker.
 
 import re
 import os
-import json
 import html
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 import sys
 from docx import Document
 from docx.oxml.ns import qn
@@ -86,9 +85,7 @@ class PatternsMixin:
 
         Returns a dict mapping heading text to {level, description, keywords}
         """
-        from docx.oxml.ns import qn
         from docx.text.paragraph import Paragraph as DocxParagraph
-        from docx.table import Table as DocxTable
 
         w_ns = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
@@ -248,7 +245,6 @@ class PatternsMixin:
         which aren't captured by iterating through cell.paragraphs.
         This method extracts text from all XML text elements.
         """
-        from docx.oxml.ns import qn
 
         all_texts = []
 

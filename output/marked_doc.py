@@ -4,21 +4,18 @@
 OutputMixin — document marking and report generation for SyllabusChecker.
 """
 
-import os
 import re
 import html
-import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 from docx import Document
 from docx.shared import RGBColor, Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-import markdown
 from constants import (
     COLOR_ACCESSIBILITY_HEX, COLOR_MISSING_HEX, COLOR_TONE_HEX, COLOR_QUALITY_HEX,
     COLOR_ACCESSIBILITY_TEXT, COLOR_MISSING_TEXT, COLOR_TONE_TEXT, COLOR_QUALITY_TEXT,
 )
-from _checker_types import AccessibilityIssue, ParagraphInfo, _ensure_comments_part, _add_word_comment
+from _checker_types import _add_word_comment
 
 
 class OutputMixin:
@@ -1039,7 +1036,7 @@ class OutputMixin:
                 for issue in multilingual_issues:
                     report_lines.append(f"[i] {issue.description}")
             if untagged_language_issues:
-                report_lines.append(f"[X] Found potential multilingual content without proper language tagging:")
+                report_lines.append("[X] Found potential multilingual content without proper language tagging:")
                 for issue in untagged_language_issues:
                     report_lines.append(f"  - {issue.description}")
         else:

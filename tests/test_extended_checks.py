@@ -505,7 +505,6 @@ class TestCheckInconsistentFonts:
     def checker_many_fonts(self, tmp_path_factory):
         """Document using 3 fonts with significant secondary usage."""
         def build(path):
-            from docx.shared import Pt as _Pt
             doc = Document()
             # Primary font: Calibri (majority)
             for _ in range(8):

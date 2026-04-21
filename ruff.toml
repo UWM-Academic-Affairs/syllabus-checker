@@ -4,13 +4,11 @@
 line-length = 120
 
 [lint.per-file-ignores]
-# syllabus_checker.py is a large existing file that uses bare `except` blocks
-# intentionally for defensive XML parsing.  Fix incrementally; don't block CI.
-"syllabus_checker.py" = [
-    "E722",   # bare `except` — intentional defensive XML parsing
-    "F841",   # local variable assigned but never used
-    "F541",   # f-string without placeholders
-    "E712",   # comparison to True/False with ==
-    "E741",   # ambiguous variable name
-    "F401",   # imported but unused
-]
+# These files use bare `except` blocks intentionally for defensive XML/OOXML
+# parsing and carry other patterns inherited from the original syllabus_checker.py.
+# Fix incrementally; don't block CI.
+"syllabus_checker.py" = ["E722", "F841", "F541", "E712", "E741", "F401", "F811"]
+"checks/accessibility.py" = ["E722", "F841", "E712", "E741"]
+"checks/patterns.py" = ["E722", "F841"]
+"llm/analysis.py" = ["E722", "F841"]
+"output/marked_doc.py" = ["E722", "F841"]

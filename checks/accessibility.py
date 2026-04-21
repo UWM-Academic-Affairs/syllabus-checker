@@ -7,8 +7,7 @@ AccessibilityMixin — all check_* accessibility methods for SyllabusChecker.
 import re
 from typing import List, Dict
 from docx.oxml.ns import qn
-from docx.shared import RGBColor, Pt
-from _checker_types import AccessibilityIssue, calculate_relative_luminance, calculate_contrast_ratio
+from _checker_types import AccessibilityIssue, calculate_contrast_ratio
 
 
 class AccessibilityMixin:
@@ -2273,7 +2272,7 @@ class AccessibilityMixin:
                 if avg_length > 0 and std_dev / avg_length > 2 and max(lengths) > 300:
                     issue = AccessibilityIssue(
                         issue_type="LAYOUT_LIST",
-                        description=f"List with highly inconsistent item lengths — this may be using a list style for visual layout rather than actual list content. If it's a list, edit items for consistent length. If it's layout, replace with a table or paragraph spacing instead.",
+                        description="List with highly inconsistent item lengths — this may be using a list style for visual layout rather than actual list content. If it's a list, edit items for consistent length. If it's layout, replace with a table or paragraph spacing instead.",
                         location=list_group[0].location,
                         para_info=list_group[0]
                     )

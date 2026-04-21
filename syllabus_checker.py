@@ -218,7 +218,6 @@ class SyllabusChecker(PatternsMixin, AccessibilityMixin, LLMMixin, OutputMixin):
 
 def main():
     """Main entry point for command-line usage"""
-    import os
 
     parser = argparse.ArgumentParser(
         description='Check a syllabus against UWM template standards',

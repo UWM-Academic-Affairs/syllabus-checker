@@ -510,7 +510,6 @@ class LLMMixin:
                 'error': 'OPENAI_API_KEY not set'
             }
 
-        import json
         try:
             client = _get_openai()(api_key=api_key)
 
