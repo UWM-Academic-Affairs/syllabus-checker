@@ -155,11 +155,11 @@
 - [x] **CD step in GitHub Actions** — on merge to `main`, SSH to server, `git pull`, `pip install -r requirements.txt`, restart gunicorn
 - [x] **Log rotation** — `/etc/logrotate.d/syllabus-checker` configured; gunicorn writing to `/var/log/syllabus-checker/access.log` and `error.log`
 - [x] **Automated DB backups** — `scripts/backup.sh` + `scripts/install-cron.sh` written; run `install-cron.sh` on server to activate daily 2am cron
-- [ ] **nginx + TLS audit** — confirm app is behind nginx proxy (not exposed on port 5001), HTTP redirects to HTTPS, certificate is valid Let's Encrypt (not self-signed)
+- [x] **nginx + TLS audit** — gunicorn on 127.0.0.1:8000 (localhost only); nginx proxying syllabus-checker.clarkenstein.com with HTTP→HTTPS redirect; Let's Encrypt cert valid through 2026-07-23
 
 ## Security (Production)
 
-- [ ] **`.env` audit** — verify all required env vars are set to non-default production values on the server (`SECRET_KEY`, `OPENAI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `FLASK_ENV`)
+- [x] **`.env` audit** — all required env vars confirmed set on server (`SECRET_KEY`, `OPENAI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `FLASK_ENV=production`); duplicate entry fixed, gunicorn restarted
 - [x] **Malformed DOCX upload testing** — automated tests added in `tests/test_malformed_uploads.py` (zip bomb, corrupted bytes, empty zip, XML bomb, PNG-renamed-to-docx); all 5 pass
 - [x] **Review OpenAI data handling disclosure** — disclosure added to upload form, results page, and batch results page; links to OpenAI privacy policy
 
