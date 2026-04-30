@@ -721,11 +721,17 @@
         // Show progress modal on submit
         const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
 
-        document.getElementById('batchForm').addEventListener('submit', function() {
-            const files = document.getElementById('batchFileInput').files;
-            if (!files || files.length === 0) return;
+        document.getElementById('batchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
 
-            document.getElementById('batchSubmitBtn').disabled = true;
+            const files = document.getElementById('batchFileInput').files;
+            if (!files || files.length === 0) {
+                alert('Please select at least one .docx file.');
+                return;
+            }
+
+            const btn = document.getElementById('batchSubmitBtn');
+            btn.disabled = true;
 
             const count = files.length;
             document.getElementById('progressStatus').textContent = `Uploading ${count} file(s)...`;
@@ -734,7 +740,23 @@
                 `<i class="bi bi-arrow-right text-muted"></i> Running checks on each syllabus...<br>` +
                 `<small class="text-muted">Batch processing may take several minutes. The page will update when all files are done.</small>`;
             progressModal.show();
-            // No preventDefault — form submits normally; browser navigates to batch_results on response
+
+            const formData = new FormData(document.getElementById('batchForm'));
+            fetch(document.getElementById('batchForm').action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                progressModal.hide();
+                btn.disabled = false;
+                alert('Error uploading files: ' + error.message);
+            });
         });
 
         const uploadForm = document.getElementById('uploadForm');
