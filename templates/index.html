@@ -720,6 +720,23 @@
 
         // Show progress modal on submit
         const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+
+        document.getElementById('batchForm').addEventListener('submit', function() {
+            const files = document.getElementById('batchFileInput').files;
+            if (!files || files.length === 0) return;
+
+            document.getElementById('batchSubmitBtn').disabled = true;
+
+            const count = files.length;
+            document.getElementById('progressStatus').textContent = `Uploading ${count} file(s)...`;
+            document.getElementById('progressStage').innerHTML =
+                `<i class="bi bi-arrow-right text-primary"></i> <strong>Uploading ${count} file(s)...</strong><br>` +
+                `<i class="bi bi-arrow-right text-muted"></i> Running checks on each syllabus...<br>` +
+                `<small class="text-muted">Batch processing may take several minutes. The page will update when all files are done.</small>`;
+            progressModal.show();
+            // No preventDefault — form submits normally; browser navigates to batch_results on response
+        });
+
         const uploadForm = document.getElementById('uploadForm');
 
         uploadForm.addEventListener('submit', function(e) {
