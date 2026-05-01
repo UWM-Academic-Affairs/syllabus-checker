@@ -209,7 +209,7 @@
                     </div>
 
                     <div class="text-center mt-3">
-                        <button type="submit" class="btn btn-primary" id="batchSubmitBtn">
+                        <button type="button" class="btn btn-primary" id="batchSubmitBtn">
                             <i class="bi bi-play-circle"></i> Analyze All Files
                         </button>
                     </div>
@@ -721,18 +721,17 @@
         // Show progress modal on submit
         const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
 
-        document.getElementById('batchForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
+        document.getElementById('batchSubmitBtn').addEventListener('click', function() {
             const files = document.getElementById('batchFileInput').files;
             if (!files || files.length === 0) {
                 alert('Please select at least one .docx file.');
                 return;
             }
 
-            const btn = document.getElementById('batchSubmitBtn');
+            const btn = this;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Analyzing…';
+
+            progressModal.show();
 
             const formData = new FormData(document.getElementById('batchForm'));
             fetch(document.getElementById('batchForm').action, {
@@ -746,8 +745,8 @@
                 document.close();
             })
             .catch(error => {
+                progressModal.hide();
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-play-circle"></i> Analyze All Files';
                 alert('Error uploading files: ' + error.message);
             });
         });
