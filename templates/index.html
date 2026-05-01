@@ -732,14 +732,7 @@
 
             const btn = document.getElementById('batchSubmitBtn');
             btn.disabled = true;
-
-            const count = files.length;
-            document.getElementById('progressStatus').textContent = `Uploading ${count} file(s)...`;
-            document.getElementById('progressStage').innerHTML =
-                `<i class="bi bi-arrow-right text-primary"></i> <strong>Uploading ${count} file(s)...</strong><br>` +
-                `<i class="bi bi-arrow-right text-muted"></i> Running checks on each syllabus...<br>` +
-                `<small class="text-muted">Batch processing may take several minutes. The page will update when all files are done.</small>`;
-            progressModal.show();
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Analyzing…';
 
             const formData = new FormData(document.getElementById('batchForm'));
             fetch(document.getElementById('batchForm').action, {
@@ -753,8 +746,8 @@
                 document.close();
             })
             .catch(error => {
-                progressModal.hide();
                 btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-circle"></i> Analyze All Files';
                 alert('Error uploading files: ' + error.message);
             });
         });
