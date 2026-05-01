@@ -197,7 +197,7 @@
         <!-- Batch Upload Card (hidden by default) -->
         <div id="batchCard" class="card mb-3" style="display:none;">
             <div class="card-body p-3">
-                <form id="batchForm" action="{{ url_for('batch_upload') }}" method="post" enctype="multipart/form-data">
+                <form id="batchForm" action="{{ url_for('batch_upload') }}" method="post" enctype="multipart/form-data" onsubmit="return batchFormSubmit(event)">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="drop-zone" style="cursor:default;">
                         <i class="bi bi-files" style="font-size: 2.5rem; color: #ffbd00;"></i>
@@ -209,7 +209,7 @@
                     </div>
 
                     <div class="text-center mt-3">
-                        <button type="button" class="btn btn-primary" id="batchSubmitBtn">
+                        <button type="submit" class="btn btn-primary" id="batchSubmitBtn">
                             <i class="bi bi-play-circle"></i> Analyze All Files
                         </button>
                     </div>
@@ -721,35 +721,35 @@
         // Show progress modal on submit
         const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
 
-        document.getElementById('batchSubmitBtn').addEventListener('click', function() {
-            const files = document.getElementById('batchFileInput').files;
+        function batchFormSubmit(e) {
+            e.preventDefault();
+            var files = document.getElementById('batchFileInput').files;
             if (!files || files.length === 0) {
                 alert('Please select at least one .docx file.');
-                return;
+                return false;
             }
-
-            const btn = this;
+            var btn = document.getElementById('batchSubmitBtn');
             btn.disabled = true;
-
-            progressModal.show();
-
-            const formData = new FormData(document.getElementById('batchForm'));
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('progressModal'));
+            modal.show();
+            var formData = new FormData(document.getElementById('batchForm'));
             fetch(document.getElementById('batchForm').action, {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.text())
-            .then(html => {
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
                 document.open();
                 document.write(html);
                 document.close();
             })
-            .catch(error => {
-                progressModal.hide();
+            .catch(function(err) {
+                modal.hide();
                 btn.disabled = false;
-                alert('Error uploading files: ' + error.message);
+                alert('Upload error: ' + err.message);
             });
-        });
+            return false;
+        }
 
         const uploadForm = document.getElementById('uploadForm');
 
