@@ -218,149 +218,30 @@
     </nav>
 
     <div class="container">
-        <!-- Summary Card - Encouraging Overview -->
-        <div class="card summary-card">
-            <div class="card-body p-4">
-                <div class="row align-items-center">
-                    <div class="col-md-2 text-center">
-                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                    </div>
-                    <div class="col-md-10">
-                        <h3 class="mb-2">{{ results.filename }}</h3>
-                        <p class="lead mb-3" style="color: #28a745;">
-                            <strong>Thanks for taking this step toward an accessible, student-centered syllabus!</strong>
-                        </p>
-                        <p class="mb-2">
-                            We've analyzed your syllabus and have some suggestions to help make it even better.
-                            {% if results.total_issues == 0 %}
-                                Great news - no accessibility issues were found!
-                            {% elif results.total_issues <= 5 %}
-                                You're in good shape with just <strong>{{ results.total_issues }} small item{{ 's' if results.total_issues > 1 else '' }}</strong> to review.
-                            {% elif results.total_issues <= 15 %}
-                                We found <strong>{{ results.total_issues }} suggestions</strong> - most are quick fixes you can tackle in one sitting.
-                            {% else %}
-                                We have <strong>{{ results.total_issues }} suggestions</strong> to share. Don't worry - many are similar issues that can be fixed together, and we've organized them by priority to help you focus on what matters most.
-                            {% endif %}
-                        </p>
-                        <div class="d-flex flex-wrap gap-3 mt-3">
-                            {% if results.section_analysis and results.section_analysis.missing|length > 0 %}
-                            <span class="badge bg-warning text-dark px-3 py-2">
-                                <i class="bi bi-list-check"></i> {{ results.section_analysis.missing|length }} content area{{ 's' if results.section_analysis.missing|length > 1 else '' }} to add
-                            </span>
-                            {% elif results.missing_sections|length > 0 %}
-                            <span class="badge bg-warning text-dark px-3 py-2">
-                                <i class="bi bi-list-check"></i> {{ results.missing_sections|length }} section{{ 's' if results.missing_sections|length > 1 else '' }} to add
-                            </span>
-                            {% endif %}
-                            {% if results.section_analysis and results.section_analysis.present %}
-                                {% set heading_issues = results.section_analysis.present|selectattr('heading_ok', 'equalto', false)|list %}
-                                {% if heading_issues|length > 0 %}
-                                <span class="badge px-3 py-2" style="background-color: #F79651; color: #000;">
-                                    <i class="bi bi-pencil-square"></i> {{ heading_issues|length }} heading{{ 's' if heading_issues|length > 1 else '' }} to standardize
-                                </span>
-                                {% endif %}
-                            {% endif %}
-                            {% if results.growth_mindset_analysis.status == 'success' %}
-                            <span class="badge bg-info text-dark px-3 py-2">
-                                <i class="bi bi-chat-heart"></i> Ready-to-use language suggestions included
-                            </span>
-                            {% endif %}
-                            {% if results.total_issues - results.missing_sections|length > 0 %}
-                            <span class="badge bg-secondary px-3 py-2">
-                                <i class="bi bi-universal-access"></i> {{ results.total_issues - results.missing_sections|length }} formatting tip{{ 's' if (results.total_issues - results.missing_sections|length) > 1 else '' }}
-                            </span>
-                            {% endif %}
-                        </div>
-                        <p class="text-muted mt-3 mb-0 small">
-                            <i class="bi bi-clock"></i> Checked on {{ results.timestamp }}
-                        </p>
-                    </div>
-                </div>
+
+        <!-- Compact header -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
+            <div>
+                <span class="fw-semibold">{{ results.filename }}</span>
+                <span class="text-muted small ms-2"><i class="bi bi-clock"></i> {{ results.timestamp }}</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-sm">
+                    <i class="bi bi-download"></i> Download
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-download btn-sm">
+                    <i class="bi bi-arrow-repeat"></i> Recheck
+                </a>
             </div>
         </div>
 
-        {% if results.scan_id %}
-        <!-- Feedback -->
-        <div class="card mb-4" style="border: 1px solid #dee2e6; border-radius: 12px;">
-            <div class="card-body p-4 text-center" id="feedbackCard">
-                <h6 class="fw-bold mb-3"><i class="bi bi-chat-square-dots"></i> Was this analysis helpful?</h6>
-                <div id="feedbackButtons">
-                    <button class="btn btn-outline-success me-2" onclick="submitFeedback('up')">
-                        <i class="bi bi-hand-thumbs-up"></i> Yes
-                    </button>
-                    <button class="btn btn-outline-danger" onclick="submitFeedback('down')">
-                        <i class="bi bi-hand-thumbs-down"></i> No
-                    </button>
-                </div>
-                <div id="feedbackComment" style="display:none;" class="mt-3">
-                    <textarea id="feedbackText" class="form-control mb-2" rows="2"
-                              placeholder="What was inaccurate or unhelpful? (optional)"></textarea>
-                    <button class="btn btn-sm btn-primary" onclick="submitFeedbackWithComment()">Send</button>
-                    <button class="btn btn-sm btn-link" onclick="cancelFeedback()">Cancel</button>
-                </div>
-                <div id="feedbackThanks" style="display:none;" class="text-success">
-                    <i class="bi bi-check-circle"></i> Thanks for your feedback!
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- What's Next panel -->
-        <div class="card mb-4" style="border: 2px solid #ffbd00; border-radius: 12px;">
-            <div class="card-body p-4">
-                <h5 class="fw-bold mb-3 text-center">What would you like to do next?</h5>
-                <div class="row g-3">
-                    <div class="col-md-6 text-center">
-                        <p class="small text-muted mb-2">Want to resubmit a revised version?</p>
-                        <a href="{{ url_for('index') }}" class="btn btn-download btn-lg w-100">
-                            <i class="bi bi-arrow-repeat"></i> Recheck Syllabus
-                        </a>
-                    </div>
-                    <div class="col-md-6 text-center">
-                        <p class="small text-muted mb-2">Ready to submit your final version?</p>
-                        {% if results.scan_id %}
-                        <span id="save-repo-wrapper" class="d-block">
-                            <button id="save-repo-btn" class="btn btn-download btn-lg w-100"
-                                    data-scan-id="{{ results.scan_id }}"
-                                    data-filename="{{ results.filename }}"
-                                    data-marked-filename="{{ results.marked_file }}"
-                                    onclick="saveToRepository(this)">
-                                <i class="bi bi-archive"></i> Save to Repository
-                            </button>
-                        </span>
-                        {% else %}
-                        <button class="btn btn-download btn-lg w-100" disabled>
-                            <i class="bi bi-archive"></i> Save to Repository
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-                <p class="text-muted text-center mt-3 mb-0 small">
-                    <i class="bi bi-shield-check"></i> Your syllabus is <strong>not stored</strong> unless you click <em>Save to Repository</em>. Analysis is powered by OpenAI; your document content is shared with OpenAI during processing.
-                </p>
-            </div>
-        </div>
-
-        <!-- Download Marked Document -->
-        <div class="text-center mb-4">
-            <a href="{{ url_for('download_file', filename=results.marked_file) }}" class="btn btn-download btn-lg">
-                <i class="bi bi-download"></i> Download Marked Document
-            </a>
-            <p class="text-muted mt-2 mb-0 small">
-                Includes comments and highlights for all issues, plus missing sections with ready-to-use language suggestions.
-            </p>
-        </div>
-
-        <!-- SECTION 1: Required Sections Analysis -->
+        <!-- SECTION: Required Sections Analysis -->
+        {% if 'sections' in results.checks %}
         <div class="report-section">
             <div class="section-header section-header-missing">
-                <h4><i class="bi bi-list-check"></i> 1. Missing Sections</h4>
-                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#missingSectionsContent" aria-expanded="false">
-                    <i class="bi bi-chevron-down"></i> Show/Hide
-                </button>
+                <h4><i class="bi bi-list-check"></i> Required Sections</h4>
             </div>
-            <div class="collapse section-body" id="missingSectionsContent">
+            <div class="section-body" id="missingSectionsContent">
 
                 {% if results.section_analysis %}
                     {% set needs_heading_change = [] %}
@@ -479,97 +360,15 @@
 
             </div>
         </div>
+        {% endif %}
 
-        <!-- SECTION 2: Belonging and Growth Mindset (high engagement + ready-to-use text) -->
-        <div class="report-section">
-            <div class="section-header section-header-tone">
-                <h4><i class="bi bi-chat-heart"></i> 2. Belonging & Growth Mindset</h4>
-                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#growthMindsetContent" aria-expanded="false">
-                    <i class="bi bi-chevron-down"></i> Show/Hide
-                </button>
-            </div>
-            <div class="collapse section-body" id="growthMindsetContent">
-                {% if results.growth_mindset_analysis.status == 'success' %}
-                    <div class="alert alert-success border-0 mb-3" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
-                        <i class="bi bi-stars text-success"></i> <strong>High-Impact Section:</strong>
-                        Research shows that syllabus language significantly affects student success and belonging.
-                        Below you'll find specific suggestions with <strong>copy-paste ready text</strong> you can use directly.
-
-                        <hr class="my-2">
-                        <p class="small mb-0">
-                            <i class="bi bi-book"></i> Based on research from the
-                            <a href="https://studentexperienceproject.org/" target="_blank" rel="noopener noreferrer">Student Experience Project</a>
-                        </p>
-                    </div>
-
-                    <div class="growth-mindset-analysis">
-                        {{ results.growth_mindset_analysis.analysis_html | safe }}
-                    </div>
-                {% elif results.growth_mindset_analysis.error %}
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i> {{ results.growth_mindset_analysis.error }}
-                    </div>
-                {% else %}
-                    <div class="alert alert-secondary">
-                        <i class="bi bi-info-circle"></i> Language analysis is not available at this time.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- SECTION 3: Syllabus Quality Analysis -->
-        <div class="report-section">
-            <div class="section-header section-header-quality">
-                <h4><i class="bi bi-stars"></i> 3. Clarity & Quality</h4>
-                <button class="btn btn-sm btn-light" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#qualityAnalysisContent">
-                    <i class="bi bi-chevron-down"></i> Show/Hide
-                </button>
-            </div>
-            <div class="collapse section-body" id="qualityAnalysisContent">
-                {% if results.quality_analysis.status == 'success' %}
-                    <div class="alert alert-info mb-3">
-                        <i class="bi bi-info-circle"></i> <strong>About This Analysis:</strong>
-                        This section identifies terminology, policies, or formatting that may confuse students.
-
-                        <hr class="my-3">
-
-                        <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb"></i> What This Checks</h6>
-                        <ul class="small mb-0">
-                            <li><strong>Undefined Terminology:</strong> Technical terms or jargon that students may not understand</li>
-                            <li><strong>Tone Issues:</strong> Language that may feel punitive or exclusionary</li>
-                            <li><strong>Confusing Policies:</strong> Rules that may create barriers or confusion</li>
-                            <li><strong>Formatting Inconsistencies:</strong> Variations in dates, headings, or other elements</li>
-                        </ul>
-                    </div>
-
-                    <div class="growth-mindset-analysis">
-                        {{ results.quality_analysis.analysis_html | safe }}
-                    </div>
-                {% elif results.quality_analysis.error %}
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        {{ results.quality_analysis.error }}
-                    </div>
-                {% else %}
-                    <div class="alert alert-secondary">
-                        <i class="bi bi-info-circle"></i> Quality analysis is not available at this time.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- SECTION 4: Digital Accessibility (important but after trust is built) -->
+        <!-- SECTION: Digital Accessibility -->
+        {% if 'access' in results.checks %}
         <div class="report-section">
             <div class="section-header section-header-access">
-                <h4><i class="bi bi-universal-access"></i> 4. Accessibility</h4>
-                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#accessibilityIssuesContent" aria-expanded="false">
-                    <i class="bi bi-chevron-down"></i> Show/Hide
-                </button>
+                <h4><i class="bi bi-universal-access"></i> Accessibility</h4>
             </div>
-            <div class="collapse section-body" id="accessibilityIssuesContent">
+            <div class="section-body" id="accessibilityIssuesContent">
                 {% if not results.category_counts %}
                 <div class="alert alert-success mb-0">
                     <i class="bi bi-check-circle-fill"></i> <strong>No accessibility issues detected.</strong>
@@ -820,34 +619,146 @@
 
                 {% endif %}
 
-                <!-- Image Alt Text Analysis (AI-powered) — only shown when issues exist -->
-                {% if results.image_alt_analysis.status == 'success' and results.image_alt_analysis.has_issues %}
+                <!-- Image Alt Text Analysis (AI-powered) -->
+                {% if results.image_alt_analysis and results.image_alt_analysis.get('status') == 'success' and results.image_alt_analysis.get('has_issues') %}
                 <div class="mt-4 pt-3 border-top">
-                    <h5 class="mb-3">
+                    <h5 class="mb-2">
                         <i class="bi bi-image text-info"></i> Image Alt Text Quality
                         {% if results.image_alt_analysis.image_count %}
                         <span class="badge bg-secondary ms-2">{{ results.image_alt_analysis.image_count }} image{{ 's' if results.image_alt_analysis.image_count > 1 else '' }}</span>
                         {% endif %}
                     </h5>
-                    <p class="text-muted small mb-3">
-                        AI-powered analysis of alt text quality for logos and images in your syllabus.
-                    </p>
+                    <p class="text-muted small mb-3">AI-powered analysis of alt text quality for images in your syllabus.</p>
                     <div class="growth-mindset-analysis">
                         {{ results.image_alt_analysis.analysis_html | safe }}
-                    </div>
-                </div>
-                {% elif results.image_alt_analysis.error %}
-                <div class="mt-4 pt-3 border-top">
-                    <h5 class="mb-3"><i class="bi bi-image text-info"></i> Image Alt Text Quality</h5>
-                    <div class="alert alert-warning mb-0">
-                        <i class="bi bi-exclamation-triangle"></i> {{ results.image_alt_analysis.error }}
                     </div>
                 </div>
                 {% endif %}
             </div>
         </div>
+        {% endif %}
 
-        <!-- Actions -->
+        <!-- Belonging & Growth Mindset (shown only if requested) -->
+        {% if results.growth_mindset_analysis %}
+        <div class="report-section">
+            <div class="section-header section-header-tone">
+                <h4><i class="bi bi-chat-heart"></i> Belonging &amp; Growth Mindset</h4>
+            </div>
+            <div class="section-body">
+                {% if results.growth_mindset_analysis.status == 'success' %}
+                    <div class="alert alert-success border-0 mb-3" style="background:linear-gradient(135deg,#e8f5e9 0%,#f1f8e9 100%);">
+                        <i class="bi bi-stars text-success"></i> <strong>High-Impact Section:</strong>
+                        Research shows that syllabus language significantly affects student success and belonging.
+                        Below you'll find specific suggestions with <strong>copy-paste ready text</strong> you can use directly.
+                        <hr class="my-2">
+                        <p class="small mb-0">
+                            <i class="bi bi-book"></i> Based on research from the
+                            <a href="https://studentexperienceproject.org/" target="_blank" rel="noopener noreferrer">Student Experience Project</a>
+                        </p>
+                    </div>
+                    <div class="growth-mindset-analysis">
+                        {{ results.growth_mindset_analysis.analysis_html | safe }}
+                    </div>
+                {% elif results.growth_mindset_analysis.error %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> {{ results.growth_mindset_analysis.error }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Clarity & Quality (shown only if requested) -->
+        {% if results.quality_analysis %}
+        <div class="report-section">
+            <div class="section-header section-header-quality">
+                <h4><i class="bi bi-stars"></i> Clarity &amp; Quality</h4>
+            </div>
+            <div class="section-body">
+                {% if results.quality_analysis.status == 'success' %}
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i> <strong>About This Analysis:</strong>
+                        This section identifies terminology, policies, or formatting that may confuse students.
+                        <hr class="my-3">
+                        <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb"></i> What This Checks</h6>
+                        <ul class="small mb-0">
+                            <li><strong>Undefined Terminology:</strong> Technical terms or jargon students may not understand</li>
+                            <li><strong>Tone Issues:</strong> Language that may feel punitive or exclusionary</li>
+                            <li><strong>Confusing Policies:</strong> Rules that may create barriers or confusion</li>
+                            <li><strong>Formatting Inconsistencies:</strong> Variations in dates, headings, or other elements</li>
+                        </ul>
+                    </div>
+                    <div class="growth-mindset-analysis">
+                        {{ results.quality_analysis.analysis_html | safe }}
+                    </div>
+                {% elif results.quality_analysis.error %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> {{ results.quality_analysis.error }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- What's Next -->
+        <div class="card mb-4 mt-2" style="border: 2px solid #ffbd00; border-radius: 12px;">
+            <div class="card-body p-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6 text-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-download w-100">
+                            <i class="bi bi-arrow-repeat"></i> Recheck Syllabus
+                        </a>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        {% if results.scan_id %}
+                        <span id="save-repo-wrapper" class="d-block">
+                            <button id="save-repo-btn" class="btn btn-download w-100"
+                                    data-scan-id="{{ results.scan_id }}"
+                                    data-filename="{{ results.filename }}"
+                                    data-marked-filename="{{ results.marked_file }}"
+                                    onclick="saveToRepository(this)">
+                                <i class="bi bi-archive"></i> Save to Repository
+                            </button>
+                        </span>
+                        {% else %}
+                        <button class="btn btn-download w-100" disabled>
+                            <i class="bi bi-archive"></i> Save to Repository
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="text-muted text-center mt-2 mb-0 small">
+                    <i class="bi bi-shield-check"></i> Not stored unless you click <em>Save to Repository</em>. Content shared with OpenAI during analysis.
+                </p>
+            </div>
+        </div>
+
+        <!-- Feedback -->
+        {% if results.scan_id %}
+        <div class="card mb-4" style="border: 1px solid #dee2e6; border-radius: 12px;">
+            <div class="card-body p-3 text-center" id="feedbackCard">
+                <h6 class="fw-bold mb-3"><i class="bi bi-chat-square-dots"></i> Was this analysis helpful?</h6>
+                <div id="feedbackButtons">
+                    <button class="btn btn-outline-success me-2" onclick="submitFeedback('up')">
+                        <i class="bi bi-hand-thumbs-up"></i> Yes
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="submitFeedback('down')">
+                        <i class="bi bi-hand-thumbs-down"></i> No
+                    </button>
+                </div>
+                <div id="feedbackComment" style="display:none;" class="mt-3">
+                    <textarea id="feedbackText" class="form-control mb-2" rows="2"
+                              placeholder="What was inaccurate or unhelpful? (optional)"></textarea>
+                    <button class="btn btn-sm btn-primary" onclick="submitFeedbackWithComment()">Send</button>
+                    <button class="btn btn-sm btn-link" onclick="cancelFeedback()">Cancel</button>
+                </div>
+                <div id="feedbackThanks" style="display:none;" class="text-success">
+                    <i class="bi bi-check-circle"></i> Thanks for your feedback!
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="text-center mb-5">
             <a href="{{ url_for('admin_analytics') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-bar-chart-line"></i> Admin
@@ -902,6 +813,29 @@
                 document.getElementById('feedbackButtons').style.display = 'none';
                 document.getElementById('feedbackComment').style.display = 'none';
                 document.getElementById('feedbackThanks').style.display = 'block';
+            });
+    }
+    function loadDeeperFeedback(scanId) {
+        document.getElementById('deeperFeedbackActions').style.display = 'none';
+        document.getElementById('deeperFeedbackSpinner').style.display = 'block';
+        fetch('/deepen/' + scanId, { method: 'POST' })
+            .then(r => {
+                if (!r.ok) {
+                    return r.text().then(msg => { throw new Error(msg); });
+                }
+                return r.text();
+            })
+            .then(html => {
+                document.getElementById('deeperFeedbackSpinner').style.display = 'none';
+                document.getElementById('deeperFeedbackCard').style.display = 'none';
+                document.getElementById('deeperFeedbackContent').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('deeperFeedbackSpinner').style.display = 'none';
+                document.getElementById('deeperFeedbackActions').innerHTML =
+                    '<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle"></i> ' +
+                    (err.message || 'Analysis failed. Please try again.') + '</div>';
+                document.getElementById('deeperFeedbackActions').style.display = 'block';
             });
     }
     function saveToRepository(btn) {

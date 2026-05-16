@@ -7,186 +7,191 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        body {
-            background-color: #f5f7fa;
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        body { background-color: #f5f7fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar {
-            background: linear-gradient(135deg, #000000 0%, #2a2a2a 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #000 0%, #2a2a2a 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
             border-bottom: 3px solid #ffbd00;
         }
-        .card {
+        .upload-card {
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,.15);
             border: 2px solid #ffbd00;
         }
         .drop-zone {
             border: 3px dashed #ffbd00;
             border-radius: 10px;
-            padding: 30px;
+            padding: 28px;
             text-align: center;
             background-color: #f8f9fa;
-            transition: all 0.3s ease;
+            transition: all .3s ease;
             cursor: pointer;
         }
         .drop-zone:hover, .drop-zone.dragover {
             background-color: #fffbf0;
-            border-color: #000000;
-            transform: scale(1.02);
+            border-color: #000;
+            transform: scale(1.01);
         }
-        .drop-zone i {
-            font-size: 2.5rem;
-            color: #ffbd00;
-            margin-bottom: 10px;
-        }
-        .drop-zone h4 {
-            font-size: 1.3rem;
-            margin-bottom: 5px;
-        }
-        .btn-primary {
-            background: #ffbd00;
-            color: #000000;
-            border: 2px solid #000000;
-            padding: 12px 40px;
-            font-size: 1.1rem;
-            border-radius: 25px;
-            font-weight: 600;
-        }
-        .btn-primary:hover {
-            background: #000000;
-            color: #ffbd00;
-            border-color: #ffbd00;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 189, 0, 0.4);
-        }
-        h1 {
-            color: #000000;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-        .file-info {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fffbf0;
-            border: 1px solid #ffbd00;
-            border-radius: 8px;
-            display: none;
-        }
-        .feature-list {
-            color: #333;
-            margin-top: 30px;
-        }
-        .feature-list li {
-            margin-bottom: 10px;
-        }
-        .feedback-section {
-            background: white;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        .drop-zone i { font-size: 2.5rem; color: #ffbd00; }
+
+        /* Feedback type tiles */
+        .check-tile {
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .2s ease;
+            background: #fff;
+            text-align: center;
+            position: relative;
+            user-select: none;
             overflow: hidden;
         }
-        .feedback-section .section-header {
-            padding: 12px 15px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .check-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+        .check-tile.selected { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+        .check-tile.selected-sections { border-color: #F79651; }
+        .check-tile.selected-access   { border-color: #035056; }
+        .check-tile.selected-mindset  { border-color: #14364D; }
+        .check-tile.selected-quality  { border-color: #8a9400; }
+        .tile-header { padding: 16px 14px 12px; }
+        .tile-sections .tile-header { background-color: #F79651; color: #000; }
+        .tile-access   .tile-header { background-color: #035056; color: #fff; }
+        .tile-mindset  .tile-header { background-color: #14364D; color: #fff; }
+        .tile-quality  .tile-header { background-color: #CFD25B; color: #000; }
+        .tile-body { padding: 10px 12px 14px; background: #fff; }
+        .check-tile .tile-check {
+            position: absolute; top: 8px; right: 10px;
+            font-size: 1.2rem; display: none;
         }
-        .feedback-section .section-header h6 {
-            margin: 0;
-            font-weight: 600;
+        .check-tile.selected .tile-check { display: block; }
+        .tile-sections .tile-check, .tile-quality .tile-check { color: #000; }
+        .tile-access   .tile-check, .tile-mindset .tile-check { color: #fff; }
+        .tile-icon { font-size: 2rem; margin-bottom: 4px; }
+        .tile-label { font-weight: 700; font-size: .95rem; }
+        .tile-desc { font-size: .78rem; color: #555; line-height: 1.3; margin-top: 4px; }
+
+        .btn-submit {
+            background: #ffbd00; color: #000;
+            border: 2px solid #000;
+            padding: 12px 40px; font-size: 1.1rem;
+            border-radius: 25px; font-weight: 600;
+            transition: all .2s;
         }
-        .feedback-section .section-body {
-            padding: 15px;
+        .btn-submit:hover:not(:disabled) {
+            background: #000; color: #ffbd00;
+            border-color: #ffbd00;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,189,0,.4);
         }
-        .section-header-missing { background-color: #F79651; color: #000; }
-        .section-header-tone { background-color: #14364D; color: #fff; }
-        .section-header-quality { background-color: #CFD25B; color: #000; }
-        .section-header-access { background-color: #035056; color: #fff; }
+        .btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+        .file-info {
+            margin-top: 14px; padding: 12px 15px;
+            background: #fffbf0; border: 1px solid #ffbd00;
+            border-radius: 8px; display: none;
+        }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-dark mb-4">
         <div class="container">
-            <span class="navbar-brand mb-0 h1" style="color: #ffbd00; font-weight: 700;">
-                📄 Syllabus Checker
-            </span>
+            <span class="navbar-brand mb-0 h1" style="color:#ffbd00;font-weight:700;">📄 Syllabus Checker</span>
         </div>
     </nav>
 
-    <div class="container">
-        <h1 class="text-center mb-2">Upload Your Syllabus</h1>
-        <p class="text-muted mb-4">
-            Comprehensive analysis for <strong>accessibility</strong>, <strong>required content</strong>, <strong>student belonging</strong>, and <strong>quality</strong> — plus a <strong>department repository</strong> for saving finalized syllabi.
-            <i class="bi bi-shield-check ms-2"></i> Your syllabus is <strong>not stored</strong> unless you choose to save it to the repository; analysis is powered by OpenAI and your document content is shared with OpenAI during processing.
+    <div class="container" style="max-width:680px;">
+        <h1 class="text-center fw-bold mb-1" style="font-size:1.7rem;">Check Your Syllabus</h1>
+        <p class="text-center text-muted mb-4" style="font-size:.95rem;">
+            Upload a .docx file, choose what you'd like feedback on, and get your report.
         </p>
-
-        <!-- Pre-Submit Instructions -->
-        <div class="alert alert-info border-0 shadow-sm mb-4" role="alert" style="background: linear-gradient(135deg, #e7f3ff 0%, #f0f7ff 100%); border-left: 4px solid #0d6efd !important;">
-            <div class="d-flex align-items-start">
-                <i class="bi bi-lightbulb-fill text-primary me-3" style="font-size: 1.5rem;"></i>
-                <div>
-                    <h6 class="alert-heading mb-2"><strong>Before You Upload</strong></h6>
-                    <p class="mb-2">
-                        For best results, run <strong>Word's built-in Accessibility Checker</strong> first and fix what you can.
-                    </p>
-                    <p class="small text-muted mb-0">
-                        <i class="bi bi-info-circle"></i> In Word: <strong>Review</strong> tab &rarr; <strong>Check Accessibility</strong>. This catches basic issues like missing alt text and heading structure problems.
-                    </p>
-                </div>
-            </div>
-        </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- Mode Toggle -->
-        <div class="d-flex justify-content-center mb-3">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm active" id="singleModeBtn" onclick="setMode('single')">
-                    <i class="bi bi-file-earmark-word"></i> Single File
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="batchModeBtn" onclick="setMode('batch')">
-                    <i class="bi bi-files"></i> Multiple Files
-                </button>
-            </div>
-        </div>
-
-        <!-- Single File Upload Card -->
-        <div id="singleCard" class="card mb-3">
+        <!-- Upload card -->
+        <div class="upload-card mb-4">
             <div class="card-body p-3">
                 <form id="uploadForm" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Drop zone -->
                     <div class="drop-zone" id="dropZone">
-                        <i class="bi bi-cloud-upload"></i>
-                        <h4>Drag & Drop Your Syllabus Here</h4>
-                        <p class="text-muted mb-1">or click to browse</p>
-                        <p class="text-muted small mb-0">Accepts: .docx files (max 16MB)</p>
+                        <i class="bi bi-cloud-upload d-block mb-2"></i>
+                        <strong>Drag &amp; drop your syllabus here</strong>
+                        <p class="text-muted small mb-0 mt-1">or click to browse &mdash; .docx only, max 16 MB</p>
                         <input type="file" name="file" id="fileInput" accept=".docx" hidden>
                     </div>
-
                     <div class="file-info" id="fileInfo">
                         <i class="bi bi-file-earmark-word text-primary"></i>
-                        <strong>Selected file:</strong> <span id="fileName"></span>
+                        <strong>Selected:</strong> <span id="fileName"></span>
                         <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="clearFile()">
                             <i class="bi bi-x"></i> Clear
                         </button>
                     </div>
 
-                    <div class="text-center mt-3">
-                        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    <!-- Feedback type selector -->
+                    <p class="text-center fw-semibold mt-4 mb-2" style="font-size:.9rem;color:#555;">
+                        What would you like feedback on? <span class="text-muted fw-normal">(select any)</span>
+                    </p>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="check-tile tile-sections" id="tile-sections" onclick="toggleTile('sections')">
+                                <i class="bi bi-check-circle-fill tile-check"></i>
+                                <div class="tile-header">
+                                    <div class="tile-icon"><i class="bi bi-list-check"></i></div>
+                                    <div class="tile-label">Required Sections</div>
+                                </div>
+                                <div class="tile-body tile-desc">Checks that all required content areas are present</div>
+                                <input type="checkbox" name="checks" value="sections" id="check-sections" hidden>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="check-tile tile-access" id="tile-access" onclick="toggleTile('access')">
+                                <i class="bi bi-check-circle-fill tile-check"></i>
+                                <div class="tile-header">
+                                    <div class="tile-icon"><i class="bi bi-universal-access"></i></div>
+                                    <div class="tile-label">Accessibility</div>
+                                </div>
+                                <div class="tile-body tile-desc">37+ checks for screen readers &amp; assistive tech</div>
+                                <input type="checkbox" name="checks" value="access" id="check-access" hidden>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="check-tile tile-mindset" id="tile-mindset" onclick="toggleTile('mindset')">
+                                <i class="bi bi-check-circle-fill tile-check"></i>
+                                <div class="tile-header">
+                                    <div class="tile-icon"><i class="bi bi-chat-heart"></i></div>
+                                    <div class="tile-label">Belonging &amp; Growth Mindset</div>
+                                </div>
+                                <div class="tile-body tile-desc">Language that supports student belonging</div>
+                                <input type="checkbox" name="checks" value="mindset" id="check-mindset" hidden>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="check-tile tile-quality" id="tile-quality" onclick="toggleTile('quality')">
+                                <i class="bi bi-check-circle-fill tile-check"></i>
+                                <div class="tile-header">
+                                    <div class="tile-icon"><i class="bi bi-stars"></i></div>
+                                    <div class="tile-label">Clarity &amp; Quality</div>
+                                </div>
+                                <div class="tile-body tile-desc">Tone, jargon, confusing policies &amp; formatting</div>
+                                <input type="checkbox" name="checks" value="quality" id="check-quality" hidden>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="noCheckWarning" class="alert alert-warning py-2 text-center small" style="display:none;">
+                        Please select at least one type of feedback above.
+                    </div>
+
+                    <div class="text-center mt-2">
+                        <button type="submit" class="btn-submit" id="submitBtn" disabled>
                             <i class="bi bi-check-circle"></i> Analyze My Syllabus
                         </button>
                     </div>
@@ -194,414 +199,10 @@
             </div>
         </div>
 
-        <!-- Batch Upload Card (hidden by default) -->
-        <div id="batchCard" class="card mb-3" style="display:none;">
-            <div class="card-body p-3">
-                <form id="batchForm" action="{{ url_for('batch_upload') }}" method="post" enctype="multipart/form-data" onsubmit="return batchFormSubmit(event)">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="drop-zone" style="cursor:default;">
-                        <i class="bi bi-files" style="font-size: 2.5rem; color: #ffbd00;"></i>
-                        <h4>Select Multiple Syllabi</h4>
-                        <p class="text-muted mb-1">Choose up to 10 .docx files at once</p>
-                        <p class="text-muted small mb-2">Each file is analyzed independently</p>
-                        <input type="file" name="files[]" id="batchFileInput" accept=".docx" multiple
-                               class="form-control mt-2">
-                    </div>
-
-                    <div class="text-center mt-3">
-                        <button type="submit" class="btn btn-primary" id="batchSubmitBtn">
-                            <i class="bi bi-play-circle"></i> Analyze All Files
-                        </button>
-                    </div>
-                    <p class="text-muted small text-center mt-2 mb-0">
-                        <i class="bi bi-info-circle"></i> Batch processing may take several minutes. The page will update when all files are done.
-                    </p>
-                </form>
-            </div>
-        </div>
-
-        <!-- OpenAI Data Handling Disclosure -->
-        <p class="text-muted small text-center mb-3">
-            <i class="bi bi-cloud"></i> Uploaded syllabi are analyzed using the OpenAI API — document content is sent to OpenAI's servers for processing. Do not upload documents containing sensitive personal information. See <a href="https://openai.com/policies/privacy-policy" target="_blank" class="text-muted">OpenAI's privacy policy</a> for details on data handling.
+        <p class="text-muted small text-center mb-4">
+            <i class="bi bi-shield-check"></i> Your syllabus is <strong>not stored</strong> unless you choose to save it.
+            Analysis uses the <a href="https://openai.com/policies/privacy-policy" target="_blank" class="text-muted">OpenAI API</a> — document content is sent to OpenAI's servers.
         </p>
-
-        <!-- Five Types of Checks -->
-        <div class="card" style="border: 2px solid #ffbd00;">
-            <div class="card-body">
-                <h5 class="card-title text-center mb-3">
-                    <i class="bi bi-list-check"></i> Four Types of Feedback
-                </h5>
-
-                <!-- 1. Missing Sections -->
-                <div class="feedback-section">
-                    <div class="section-header section-header-missing">
-                        <h6><i class="bi bi-list-check"></i> 1. Missing Sections</h6>
-                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#requiredSectionsList" aria-expanded="false">
-                            <i class="bi bi-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <p class="small text-muted mb-0">
-                            Verifies your syllabus includes essential information that students need and institutions require.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="collapse mb-3" id="requiredSectionsList">
-                    <div class="alert alert-light border mb-3">
-                        <h6 class="fw-bold mb-2"><i class="bi bi-clipboard-check"></i> Required Syllabus Components</h6>
-                        <p class="small mb-3">
-                            Based on UWM syllabus guidelines and best practices from Quality Matters and the Association of American Colleges & Universities (AAC&U).
-                        </p>
-                        <div class="row small">
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-person"></i> Basic Course Info</strong>
-                                <ul class="mb-3">
-                                    <li>Instructor Name & Contact</li>
-                                    <li>Office Hours</li>
-                                    <li>Course Title & Credits</li>
-                                    <li>Meeting Times & Location</li>
-                                </ul>
-
-                                <strong><i class="bi bi-hand-wave"></i> Welcome Statement</strong>
-                                <ul class="mb-3">
-                                    <li>Welcome to students</li>
-                                </ul>
-
-                                <strong><i class="bi bi-bullseye"></i> Course Overview</strong>
-                                <ul class="mb-3">
-                                    <li>Course Objectives</li>
-                                    <li>Student Learning Outcomes</li>
-                                    <li>Assessment</li>
-                                    <li>Prerequisites</li>
-                                    <li>Course Modality and Format</li>
-                                    <li>Course Materials</li>
-                                    <li>Time Investment</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-clipboard-data"></i> Assignments & Grading</strong>
-                                <ul class="mb-3">
-                                    <li>Assignment and Grading Policies</li>
-                                    <li>Grading Scheme</li>
-                                    <li>Grading Scale</li>
-                                </ul>
-
-                                <strong><i class="bi bi-shield-check"></i> Policies</strong>
-                                <ul class="mb-3">
-                                    <li>Course Policies</li>
-                                    <li>Department Policies</li>
-                                    <li>University Policies</li>
-                                </ul>
-
-                                <strong><i class="bi bi-life-preserver"></i> Resources</strong>
-                                <ul class="mb-3">
-                                    <li>Student resources and support services</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-4">
-                                <strong><i class="bi bi-calendar-event"></i> Important Dates</strong>
-                                <ul class="mb-3">
-                                    <li>Key dates and deadlines</li>
-                                </ul>
-
-                                <strong><i class="bi bi-heart"></i> Instructor Statement of Support</strong>
-                                <ul class="mb-3">
-                                    <li>Statement showing care for student success</li>
-                                </ul>
-
-                                <strong><i class="bi bi-calendar-week"></i> Calendar</strong>
-                                <ul class="mb-0">
-                                    <li>Course schedule/calendar</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Belonging & Growth Mindset -->
-                <div class="feedback-section">
-                    <div class="section-header section-header-tone">
-                        <h6><i class="bi bi-chat-heart"></i> 2. Belonging & Growth Mindset</h6>
-                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#growthMindsetList" aria-expanded="false">
-                            <i class="bi bi-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <p class="small text-muted mb-0">
-                            AI-powered analysis of how well your syllabus promotes student belonging and communicates growth mindset.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="collapse mb-3" id="growthMindsetList">
-                    <div class="alert alert-light border mb-3">
-                        <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb"></i> Research-Based Analysis</h6>
-                        <p class="small mb-3">
-                            Based on the <strong><a href="https://studentexperienceproject.org/" target="_blank">Student Experience Project</a></strong>,
-                            our AI analyzes your syllabus for messaging that impacts student success, especially for historically marginalized groups.
-                        </p>
-
-                        <strong class="small">The 6 Core Questions We Analyze:</strong>
-                        <ol class="small mt-2">
-                            <li class="mb-2">
-                                <strong>Growth Mindset:</strong> Does the syllabus communicate that students can grow their abilities through effort,
-                                strategies, and help-seeking? (vs. fixed ability beliefs)
-                            </li>
-                            <li class="mb-2">
-                                <strong>Normalizing Challenge:</strong> Does it acknowledge that being challenged is normal and not a sign
-                                of inability or not belonging?
-                            </li>
-                            <li class="mb-2">
-                                <strong>Instructor Care:</strong> Does the syllabus communicate that the instructor and teaching team
-                                genuinely care about students' success?
-                            </li>
-                            <li class="mb-2">
-                                <strong>Valuing Diversity:</strong> Does it signal that diverse perspectives, backgrounds, and identities
-                                are valued in the classroom?
-                            </li>
-                            <li class="mb-2">
-                                <strong>Normalizing Student Challenges:</strong> Does it acknowledge common challenges (financial strain,
-                                mental health, caregiving) and connect students with resources?
-                            </li>
-                            <li class="mb-2">
-                                <strong>Normalizing Academic Support:</strong> Does it present tutoring, office hours, and other resources
-                                as standard tools for success (not remedial)?
-                            </li>
-                        </ol>
-
-                        <p class="small mb-0 mt-3">
-                            <i class="bi bi-stars"></i> <strong>What You'll Get:</strong> For each question, you'll receive an assessment,
-                            evidence from your syllabus, suggestions for improvement, and <strong>ready-to-use text</strong> you can
-                            copy-paste directly into your syllabus.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- 3. Clarity & Quality -->
-                <div class="feedback-section">
-                    <div class="section-header section-header-quality">
-                        <h6><i class="bi bi-stars"></i> 3. Clarity & Quality</h6>
-                        <button class="btn btn-sm btn-light" type="button"
-                                data-bs-toggle="collapse" data-bs-target="#qualityAnalysisList">
-                            <i class="bi bi-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <p class="small text-muted mb-0">
-                            AI-powered analysis identifies terminology, policies, or formatting that may confuse or exclude students.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="collapse mb-3" id="qualityAnalysisList">
-                    <div class="alert alert-light border">
-                        <p class="small mb-3">
-                            This analysis uses AI to examine your syllabus across five key areas:
-                        </p>
-                        <ol class="small mb-0">
-                            <li class="mb-2">
-                                <strong>Undefined Course Terminology:</strong> Identifies technical terms, jargon, or acronyms
-                                that students (especially first-time students) may not understand.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Tone and Inclusivity Issues:</strong> Flags punitive language, deficit-based framing,
-                                or policies that assume all students have the same resources or circumstances.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Potentially Confusing Policies:</strong> Highlights policies that may create barriers for
-                                students with disabilities, conflict with accessibility guidance, or are vague/ambiguous.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Inconsistent Formatting:</strong> Detects inconsistencies in dates, headings, assignment names,
-                                or other repeated elements that may confuse students.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Heading Structure Issues:</strong> Identifies fake headings (styled text instead of semantic headings),
-                                non-descriptive headings, and inconsistent heading usage.
-                            </li>
-                        </ol>
-
-                        <p class="small mb-0 mt-3">
-                            <i class="bi bi-lightbulb"></i> <strong>What You'll Get:</strong> For each area, you'll receive specific
-                            examples from your syllabus, explanations of potential issues, and concrete recommendations for improvement.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- 4. Accessibility -->
-                <div class="feedback-section">
-                    <div class="section-header section-header-access">
-                        <h6><i class="bi bi-universal-access"></i> 4. Accessibility</h6>
-                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#accessibilityChecksList" aria-expanded="false">
-                            <i class="bi bi-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="section-body">
-                        <p class="small text-muted mb-0">
-                            Ensures your syllabus is accessible to all students, including those using screen readers or assistive technologies. (37+ checks)
-                        </p>
-                    </div>
-                </div>
-
-                <div class="collapse mb-3" id="accessibilityChecksList">
-                    <!-- Introduction and Standards -->
-                    <div class="alert alert-light border mb-4">
-                        <h6 class="fw-bold mb-2"><i class="bi bi-mortarboard"></i> Why Syllabus Accessibility Matters</h6>
-                        <p class="small mb-2">
-                            A syllabus is often the first document students encounter and serves as a contract, roadmap, and accessibility gateway.
-                            Inaccessible syllabi disproportionately affect students with disabilities, international students, first-generation students, and neurodivergent learners.
-                        </p>
-                        <p class="small mb-3">
-                            Our checks are based on established standards from leading organizations:
-                        </p>
-                        <div class="row small">
-                            <div class="col-md-6">
-                                <strong><i class="bi bi-file-earmark-text"></i> Document Accessibility Standards:</strong>
-                                <ul class="mb-2">
-                                    <li><strong>WCAG 2.1/2.2</strong> - International accessibility guidelines (W3C/WAI)</li>
-                                    <li><strong>Section 508</strong> - U.S. federal accessibility requirements</li>
-                                    <li><strong>ADA</strong> - Americans with Disabilities Act compliance</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <strong><i class="bi bi-book"></i> Educational Best Practices:</strong>
-                                <ul class="mb-0">
-                                    <li><strong>UDL</strong> - Universal Design for Learning (CAST)</li>
-                                    <li><strong>Quality Matters</strong> - Course design standards</li>
-                                    <li><strong>AEM Center</strong> - Accessible Educational Materials</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="fw-bold mt-3"><i class="bi bi-fonts"></i> Font Usage
-                                <a href="https://support.microsoft.com/en-us/office/change-the-font-size-dc5b3f47-9e78-4af6-9734-ffc69175811c" target="_blank" class="ms-2 small text-decoration-none" title="Learn how to fix"><i class="bi bi-question-circle text-info"></i> Learn how</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Small font sizes (below 11pt)</li>
-                                <li>Decorative or inaccessible fonts</li>
-                                <li>Inconsistent font families</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> Select text &rarr; Home tab &rarr; Font size dropdown &rarr; Choose 11pt or larger. Use Arial, Calibri, or Times New Roman.</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-table"></i> Table Structure
-                                <a href="https://support.microsoft.com/en-us/office/video-create-accessible-tables-in-word-cb464015-59dc-46a0-ac01-6217c62210e5" target="_blank" class="ms-2 small text-decoration-none" title="Watch video"><i class="bi bi-play-circle text-info"></i> Video</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Empty table rows or columns</li>
-                                <li>Tables used for layout instead of data</li>
-                                <li>Missing table headers</li>
-                                <li>Missing scope declarations</li>
-                                <li>Missing table captions</li>
-                                <li>Merged cells affecting reading order</li>
-                                <li>Incorrect numeric alignment</li>
-                                <li>Confusing table reading order</li>
-                                <li>Embedded images in tables</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>What's a table header?</strong> The top row that labels each column (e.g., "Date", "Topic", "Assignment"). To set: Click in table &rarr; Table Design tab &rarr; Check "Header Row".</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-palette"></i> Color & Contrast
-                                <a href="https://webaim.org/resources/contrastchecker/" target="_blank" class="ms-2 small text-decoration-none" title="Check your colors"><i class="bi bi-palette text-info"></i> Contrast checker</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Low color contrast</li>
-                                <li>Color used as sole indicator of meaning</li>
-                                <li>Text over colored backgrounds</li>
-                                <li>Color-coded tables without text labels</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> Use dark text on light backgrounds. If using color to show meaning (e.g., red = late), also add text labels.</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-link-45deg"></i> Links
-                                <a href="https://support.microsoft.com/en-us/office/create-accessible-links-in-word-28305cc8-3be2-417f-a789-67c5a8d14393" target="_blank" class="ms-2 small text-decoration-none" title="Learn how"><i class="bi bi-question-circle text-info"></i> Learn how</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Non-descriptive link text ("click here")</li>
-                                <li>Long URLs in text</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> Instead of "click here", use descriptive text like "view the grading rubric". Right-click link &rarr; Edit Hyperlink &rarr; Change "Text to display".</p>
-                        </div>
-
-                        <div class="col-md-6">
-                            <h6 class="fw-bold mt-3"><i class="bi bi-text-paragraph"></i> Text Formatting
-                                <a href="https://support.microsoft.com/en-us/office/use-headings-and-styles-in-word-c0d409b5-5c0a-4a5c-8c5e-001e76072e51" target="_blank" class="ms-2 small text-decoration-none" title="Learn about styles"><i class="bi bi-question-circle text-info"></i> Using styles</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Pseudo-tables (manual alignment with tabs/spaces)</li>
-                                <li>Underlined non-link text</li>
-                                <li>Insufficient line spacing</li>
-                                <li>Full text justification</li>
-                                <li>Large blocks of ALL CAPS text</li>
-                                <li>Excessive bold, italic, or underline</li>
-                                <li>Inconsistent formatting</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> Use left alignment (not justified). For emphasis, use <strong>bold</strong> instead of ALL CAPS or underline.</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-image"></i> Images & Alt Text
-                                <a href="https://support.microsoft.com/en-us/office/add-alternative-text-to-a-shape-picture-chart-smartart-graphic-or-other-object-44989b2a-903c-4d9a-b742-6a75b451c669" target="_blank" class="ms-2 small text-decoration-none" title="Watch video"><i class="bi bi-play-circle text-info"></i> Video</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Missing alt text</li>
-                                <li>Questionable decorative image marking</li>
-                                <li>Images containing text or schedules</li>
-                                <li>AI-powered alt text quality analysis</li>
-                                <li>Logos with insufficient descriptions</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>What's alt text?</strong> A brief description of an image for screen readers. Right-click image &rarr; "View Alt Text" &rarr; Type description (e.g., "UWM logo" or "Chart showing enrollment trends").</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-file-earmark-text"></i> Document Properties
-                                <a href="https://support.microsoft.com/en-us/office/make-your-word-documents-accessible-d9bf3683-87ac-47ea-b91a-78dcacb3c66d" target="_blank" class="ms-2 small text-decoration-none" title="Full guide"><i class="bi bi-book text-info"></i> Full guide</a>
-                            </h6>
-                            <ul class="small">
-                                <li>Missing document title</li>
-                                <li>Missing language setting</li>
-                                <li>Multiple languages without proper tagging</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> File &rarr; Info &rarr; Properties &rarr; Add Title. For language: Review tab &rarr; Language &rarr; Set Proofing Language.</p>
-
-                            <h6 class="fw-bold mt-3"><i class="bi bi-stars"></i> Content Quality</h6>
-                            <ul class="small">
-                                <li>Copied content with broken formatting</li>
-                                <li>Footnotes instead of inline explanations</li>
-                                <li>Visual indicators without text equivalents</li>
-                                <li>Math expressions without accessible markup</li>
-                            </ul>
-                            <p class="small text-muted mb-2"><i class="bi bi-lightbulb"></i> <strong>Quick fix:</strong> When pasting, use "Paste Special" &rarr; "Keep Text Only" to avoid formatting issues.</p>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-warning mt-3 mb-0" role="alert">
-                        <i class="bi bi-shield-check"></i> <strong>Legal Compliance:</strong> These checks help institutions comply with federal accessibility laws (ADA, Section 504, Section 508).
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="feature-list mt-3">
-            <div class="row text-center justify-content-center">
-                <div class="col-md-3 col-6">
-                    <i class="bi bi-list-check" style="font-size: 2rem; color: #F79651;"></i>
-                    <p class="mt-2"><strong>Missing Sections</strong><br><small>Content verification</small></p>
-                </div>
-                <div class="col-md-3 col-6">
-                    <i class="bi bi-chat-heart" style="font-size: 2rem; color: #14364D;"></i>
-                    <p class="mt-2"><strong>Belonging & Growth Mindset</strong><br><small>Belonging analysis</small></p>
-                </div>
-                <div class="col-md-3 col-6">
-                    <i class="bi bi-stars" style="font-size: 2rem; color: #CFD25B;"></i>
-                    <p class="mt-2"><strong>Clarity & Quality</strong><br><small>Student-friendly</small></p>
-                </div>
-                <div class="col-md-3 col-6">
-                    <i class="bi bi-universal-access" style="font-size: 2rem; color: #035056;"></i>
-                    <p class="mt-2"><strong>Accessibility</strong><br><small>37+ automated checks</small></p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Progress Modal -->
@@ -609,30 +210,16 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-body text-center py-5">
-                    <div class="mb-4">
-                        <i class="bi bi-hourglass-split text-primary" style="font-size: 3rem;"></i>
+                    <div class="mb-3">
+                        <i class="bi bi-hourglass-split text-primary" style="font-size:3rem;"></i>
                     </div>
-                    <h5 class="mb-3">Analyzing Your Syllabus</h5>
-                    <p class="text-muted mb-4" id="progressStatus">Uploading document...</p>
-
-                    <div class="progress mb-3" style="height: 25px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                             role="progressbar"
-                             style="width: 100%"
-                             id="progressBar">
-                        </div>
+                    <h5 class="mb-2">Analyzing Your Syllabus</h5>
+                    <p class="text-muted mb-3" id="progressStatus">Uploading document…</p>
+                    <div class="progress mb-2" style="height:20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                             role="progressbar" style="width:100%;color:#000;"></div>
                     </div>
-
-                    <div class="small text-muted mt-4">
-                        <div id="progressStage">
-                            <i class="bi bi-check-circle text-success"></i> Uploading document...<br>
-                            <i class="bi bi-arrow-right text-muted"></i> Checking required sections...<br>
-                            <i class="bi bi-arrow-right text-muted"></i> Analyzing belonging & growth mindset...<br>
-                            <i class="bi bi-arrow-right text-muted"></i> Analyzing clarity & quality...<br>
-                            <i class="bi bi-arrow-right text-muted"></i> Running accessibility checks...<br>
-                            <i class="bi bi-arrow-right text-muted"></i> Generating report...
-                        </div>
-                    </div>
+                    <p class="text-muted small mt-2" id="progressNote">This usually takes 15–30 seconds.</p>
                 </div>
             </div>
         </div>
@@ -640,196 +227,97 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function setMode(mode) {
-            const singleCard = document.getElementById('singleCard');
-            const batchCard = document.getElementById('batchCard');
-            const singleBtn = document.getElementById('singleModeBtn');
-            const batchBtn = document.getElementById('batchModeBtn');
-            if (mode === 'single') {
-                singleCard.style.display = '';
-                batchCard.style.display = 'none';
-                singleBtn.classList.add('active');
-                singleBtn.classList.remove('btn-outline-primary');
-                singleBtn.classList.add('btn-primary');
-                batchBtn.classList.remove('active');
-                batchBtn.classList.add('btn-outline-primary');
-                batchBtn.classList.remove('btn-primary');
-            } else {
-                singleCard.style.display = 'none';
-                batchCard.style.display = '';
-                batchBtn.classList.add('active');
-                batchBtn.classList.remove('btn-outline-primary');
-                batchBtn.classList.add('btn-primary');
-                singleBtn.classList.remove('active');
-                singleBtn.classList.add('btn-outline-primary');
-                singleBtn.classList.remove('btn-primary');
-            }
+        const dropZone   = document.getElementById('dropZone');
+        const fileInput  = document.getElementById('fileInput');
+        const fileInfo   = document.getElementById('fileInfo');
+        const fileName   = document.getElementById('fileName');
+        const submitBtn  = document.getElementById('submitBtn');
+
+        let fileReady = false;
+        let selectedChecks = new Set();
+
+        function updateSubmit() {
+            submitBtn.disabled = !(fileReady && selectedChecks.size > 0);
         }
 
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const submitBtn = document.getElementById('submitBtn');
+        function toggleTile(key) {
+            const tile = document.getElementById('tile-' + key);
+            const cb   = document.getElementById('check-' + key);
+            if (selectedChecks.has(key)) {
+                selectedChecks.delete(key);
+                tile.classList.remove('selected', 'selected-' + key);
+                cb.checked = false;
+            } else {
+                selectedChecks.add(key);
+                tile.classList.add('selected', 'selected-' + key);
+                cb.checked = true;
+            }
+            document.getElementById('noCheckWarning').style.display = 'none';
+            updateSubmit();
+        }
 
-        // Click to browse
         dropZone.addEventListener('click', () => fileInput.click());
-
-        // File selection
         fileInput.addEventListener('change', handleFileSelect);
 
-        // Drag and drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                handleFileSelect();
-            }
+            if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFileSelect(); }
         });
 
         function handleFileSelect() {
             const file = fileInput.files[0];
-            if (file) {
-                if (!file.name.endsWith('.docx')) {
-                    alert('Please select a .docx file');
-                    fileInput.value = '';
-                    return;
-                }
-                fileName.textContent = file.name;
-                fileInfo.style.display = 'block';
-                submitBtn.disabled = false;
+            if (!file) return;
+            if (!file.name.endsWith('.docx')) {
+                alert('Please select a .docx file.');
+                fileInput.value = '';
+                return;
             }
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'block';
+            fileReady = true;
+            updateSubmit();
         }
 
         function clearFile() {
             fileInput.value = '';
             fileInfo.style.display = 'none';
-            submitBtn.disabled = true;
+            fileReady = false;
+            updateSubmit();
         }
 
-        // Show progress modal on submit
         const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
 
-        function batchFormSubmit(e) {
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            var files = document.getElementById('batchFileInput').files;
-            if (!files || files.length === 0) {
-                alert('Please select at least one .docx file.');
-                return false;
+            if (selectedChecks.size === 0) {
+                document.getElementById('noCheckWarning').style.display = 'block';
+                return;
             }
-            var btn = document.getElementById('batchSubmitBtn');
-            btn.disabled = true;
-            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('progressModal'));
-            modal.show();
-            var formData = new FormData(document.getElementById('batchForm'));
-            fetch(document.getElementById('batchForm').action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(function(r) { return r.text(); })
-            .then(function(html) {
-                document.open();
-                document.write(html);
-                document.close();
-            })
-            .catch(function(err) {
-                modal.hide();
-                btn.disabled = false;
-                alert('Upload error: ' + err.message);
-            });
-            return false;
-        }
-
-        const uploadForm = document.getElementById('uploadForm');
-
-        uploadForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            // Show modal
             progressModal.show();
+            const stages = [];
+            if (selectedChecks.has('sections'))  stages.push('Checking required sections…');
+            if (selectedChecks.has('access'))    stages.push('Running accessibility checks…');
+            if (selectedChecks.has('mindset'))   stages.push('Analyzing belonging & growth mindset…');
+            if (selectedChecks.has('quality'))   stages.push('Analyzing clarity & quality…');
+            stages.push('Generating report…');
 
-            // Initialize progress stages
             let stage = 0;
-            const stages = [
-                'Uploading document...',
-                'Checking required sections...',
-                'Analyzing belonging & growth mindset...',
-                'Analyzing clarity & quality...',
-                'Running accessibility checks...',
-                'Generating report...'
-            ];
-
-            updateProgressStage(0);
             document.getElementById('progressStatus').textContent = stages[0];
-
-            // Update progress stages every 2.5 seconds
-            const progressInterval = setInterval(function() {
+            const interval = setInterval(() => {
                 stage++;
                 if (stage < stages.length) {
-                    updateProgressStage(stage);
                     document.getElementById('progressStatus').textContent = stages[stage];
                 }
-            }, 2500);
+            }, 3000);
 
-            // Submit form via AJAX to keep modal visible
-            const formData = new FormData(uploadForm);
-
-            fetch(uploadForm.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text())
-            .then(html => {
-                // Clear the progress interval
-                clearInterval(progressInterval);
-
-                // Navigate to results by replacing the entire document
-                document.open();
-                document.write(html);
-                document.close();
-            })
-            .catch(error => {
-                clearInterval(progressInterval);
-                progressModal.hide();
-                alert('Error uploading file: ' + error.message);
-            });
+            fetch(this.action, { method: 'POST', body: new FormData(this) })
+                .then(r => r.text())
+                .then(html => { clearInterval(interval); document.open(); document.write(html); document.close(); })
+                .catch(err => { clearInterval(interval); progressModal.hide(); alert('Upload error: ' + err.message); });
         });
-
-        function updateProgressStage(currentStage) {
-            const stageDiv = document.getElementById('progressStage');
-            const stages = [
-                'Uploading document...',
-                'Checking required sections...',
-                'Analyzing belonging & growth mindset...',
-                'Analyzing clarity & quality...',
-                'Running accessibility checks...',
-                'Generating report...'
-            ];
-
-            let html = '';
-            stages.forEach((stage, index) => {
-                if (index < currentStage) {
-                    html += `<i class="bi bi-check-circle text-success"></i> ${stage}<br>`;
-                } else if (index === currentStage) {
-                    html += `<i class="bi bi-arrow-right text-primary"></i> <strong>${stage}</strong><br>`;
-                } else {
-                    html += `<i class="bi bi-arrow-right text-muted"></i> ${stage}<br>`;
-                }
-            });
-
-            stageDiv.innerHTML = html;
-        }
     </script>
 </body>
 </html>

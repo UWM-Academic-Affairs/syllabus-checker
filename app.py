@@ -324,98 +324,143 @@ def index():
     """Main upload page"""
     return render_template('index.html')
 
-def _process_docx(filename: str, upload_path: str):
-    """Process a single .docx file; return a results dict (with scan_id) or None on error."""
+def _build_category_data(checker, heading_check, table_check, list_check):
+    """Aggregate issues from checker and structural checks into category dicts."""
+    category_counts = {}
+    category_issues = {}
+
+    for issue in checker.issues:
+        issue_category = None
+        for category, issue_types in CATEGORY_MAPPING.items():
+            if issue.issue_type in issue_types:
+                issue_category = category
+                break
+        if issue_category:
+            if issue_category not in category_counts:
+                category_counts[issue_category] = 0
+                category_issues[issue_category] = []
+            category_counts[issue_category] += 1
+            category_issues[issue_category].append({
+                'location': issue.location,
+                'description': issue.description
+            })
+
+    if table_check.get('issues'):
+        if 'Layout Tables' not in category_counts:
+            category_counts['Layout Tables'] = 0
+            category_issues['Layout Tables'] = []
+        category_counts['Layout Tables'] += len(table_check['issues'])
+        for issue_text in table_check['issues']:
+            category_issues['Layout Tables'].append({
+                'location': 'Document',
+                'description': issue_text.replace('WARNING: ', '')
+            })
+
+    if heading_check.get('issues'):
+        if 'Document Structure' not in category_counts:
+            category_counts['Document Structure'] = 0
+            category_issues['Document Structure'] = []
+        category_counts['Document Structure'] += len(heading_check['issues'])
+        for issue_text in heading_check['issues']:
+            category_issues['Document Structure'].append({
+                'location': 'Document',
+                'description': issue_text.replace('WARNING: ', '')
+            })
+
+    if list_check.get('issues'):
+        if 'Lists' not in category_counts:
+            category_counts['Lists'] = 0
+        category_counts['Lists'] += len(list_check['issues'])
+
+    return category_counts, category_issues
+
+
+def _process_docx(filename: str, upload_path: str, checks: set = None):
+    """Run selected analyses and return a results dict (with scan_id) or None on error.
+
+    checks is a set of strings from {'sections', 'access', 'mindset', 'quality'}.
+    If None or empty, all checks run (backwards-compatible for batch upload).
+    """
+    if not checks:
+        checks = {'sections', 'access', 'mindset', 'quality'}
+
     try:
         _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                       'assets', 'Uniform-Syllabus-Template-1.docx')
         checker = SyllabusChecker(_template_path, upload_path)
 
-        # Get section analysis using LLM (content-based analysis)
-        section_analysis = checker.analyze_sections_with_llm()
+        # --- Required Sections ---
+        section_analysis = {'present': [], 'missing': []}
+        missing_sections = []
+        if 'sections' in checks:
+            section_analysis = checker.analyze_sections_with_llm()
+            missing_items = section_analysis.get('missing', [])
+            if missing_items and isinstance(missing_items[0], dict):
+                missing_sections = [item.get('content_type', str(item)) for item in missing_items]
+            else:
+                missing_sections = missing_items
 
-        # Extract missing content types for backward compatibility with analytics
-        # New format: missing is [{content_type: "X", description: "...", recommendation: "..."}]
-        missing_items = section_analysis.get('missing', [])
-        if missing_items and isinstance(missing_items[0], dict):
-            missing_sections = [item.get('content_type', str(item)) for item in missing_items]
-        else:
-            missing_sections = missing_items  # Fallback for old format
+        # --- Accessibility ---
+        heading_check = {'issues': []}
+        table_check = {'issues': []}
+        list_check = {'issues': []}
+        if 'access' in checks:
+            checker.run_all_checks()
+            heading_check = checker.check_heading_structure()
+            table_check = checker.check_table_usage()
+            list_check = checker.check_list_usage()
 
-        # Run all checks
-        checker.run_all_checks()
+        # --- Growth Mindset ---
+        growth_mindset_analysis = {}
+        if 'mindset' in checks:
+            growth_mindset_analysis = checker.analyze_growth_mindset_and_belonging()
+            if growth_mindset_analysis.get('status') == 'success' and 'analysis' in growth_mindset_analysis:
+                growth_mindset_analysis['analysis_html'] = markdown.markdown(
+                    growth_mindset_analysis['analysis'],
+                    extensions=['extra', 'nl2br', 'sane_lists']
+                )
 
-        # Get additional checks that return dictionaries (not added to self.issues)
-        heading_check = checker.check_heading_structure()
-        table_check = checker.check_table_usage()
-        list_check = checker.check_list_usage()
+        # --- Quality / Clarity ---
+        quality_analysis = {}
+        image_alt_analysis = {}
+        if 'quality' in checks:
+            quality_analysis = checker.analyze_syllabus_quality()
+            if quality_analysis.get('status') == 'success' and 'analysis' in quality_analysis:
+                quality_analysis['analysis_html'] = markdown.markdown(
+                    quality_analysis['analysis'],
+                    extensions=['extra', 'nl2br', 'sane_lists']
+                )
+        if 'access' in checks:
+            image_alt_analysis = checker.analyze_image_alt_text()
+            if image_alt_analysis.get('status') == 'success' and 'analysis' in image_alt_analysis:
+                image_alt_analysis['analysis_html'] = markdown.markdown(
+                    image_alt_analysis['analysis'],
+                    extensions=['extra', 'nl2br', 'sane_lists']
+                )
+                analysis_lower = image_alt_analysis['analysis'].lower()
+                image_alt_analysis['has_issues'] = not (
+                    'all institutional logos have meaningful alt text' in analysis_lower
+                    and 'all alt text is clear, concise, and descriptive' in analysis_lower
+                )
 
-        # Run growth mindset and belonging analysis
-        growth_mindset_analysis = checker.analyze_growth_mindset_and_belonging()
-
-        # Run syllabus quality analysis
-        quality_analysis = checker.analyze_syllabus_quality()
-
-        # Extract course metadata using LLM
+        # --- Metadata (always, for analytics) ---
         course_metadata = checker.extract_course_metadata()
 
-        # Run image alt text analysis
-        image_alt_analysis = checker.analyze_image_alt_text()
-
-        # Generate report (generate_report already returns a joined string)
+        # --- Report & marked doc (only meaningful when at least one doc check ran) ---
         report_text = checker.generate_report()
-
-        # Create marked document with missing sections and growth mindset recommendations
         marked_filename = f"{os.path.splitext(filename)[0]}_marked.docx"
         marked_path = os.path.join(os.path.dirname(upload_path), marked_filename)
-        checker.create_marked_document(marked_path, missing_sections, growth_mindset_analysis, quality_analysis)
+        gm = growth_mindset_analysis if 'mindset' in checks else None
+        qa = quality_analysis if 'quality' in checks else None
+        ms = missing_sections if 'sections' in checks else []
+        checker.create_marked_document(marked_path, ms, gm, qa)
 
-        # Count issues by category and collect structured issue data
-        category_counts = {}
-        category_issues = {}
+        # --- Category data ---
+        category_counts, category_issues = _build_category_data(
+            checker, heading_check, table_check, list_check
+        )
 
-        for issue in checker.issues:
-            # Find which category this issue belongs to
-            issue_category = None
-            for category, issue_types in CATEGORY_MAPPING.items():
-                if issue.issue_type in issue_types:
-                    issue_category = category
-                    break
-
-            if issue_category:
-                if issue_category not in category_counts:
-                    category_counts[issue_category] = 0
-                    category_issues[issue_category] = []
-                category_counts[issue_category] += 1
-                category_issues[issue_category].append({
-                    'location': issue.location,
-                    'description': issue.description
-                })
-
-        # Extract the SUMMARY section from the report
-        summary_section = ""
-        report_lines = report_text.split('\n')
-        in_summary = False
-        summary_lines = []
-
-        for i, line in enumerate(report_lines):
-            # Look for the SUMMARY header (it's between two lines of equals signs)
-            if line.strip() == "SUMMARY":
-                # Skip the next line (which should be another line of equals signs)
-                in_summary = True
-                continue
-            elif in_summary:
-                # Skip the line of equals signs right after SUMMARY
-                if line.strip().startswith("=" * 40) and len(summary_lines) == 0:
-                    continue
-                # Stop at the next major section (another line of equals signs after we've started collecting)
-                if line.strip().startswith("=" * 40) and len(summary_lines) > 0:
-                    break
-                summary_lines.append(line)
-
-        summary_section = '\n'.join(summary_lines).strip()
-
-        # Calculate total issues (must match text report calculation)
+        # --- Summary ---
         total_web_issues = (
             len(missing_sections) +
             len(heading_check.get('issues', [])) +
@@ -423,9 +468,6 @@ def _process_docx(filename: str, upload_path: str):
             len(list_check.get('issues', [])) +
             len(checker.issues)
         )
-
-        # Prepare summary
-        summary_message = ""
         if total_web_issues == 0:
             summary_message = "Excellent! This syllabus meets all standards."
             summary_status = "success"
@@ -436,60 +478,6 @@ def _process_docx(filename: str, upload_path: str):
             summary_message = f"This syllabus has {total_web_issues} issue(s) that need attention."
             summary_status = "danger"
 
-        # Add structural issues to appropriate categories
-        if table_check.get('issues'):
-            if 'Layout Tables' not in category_counts:
-                category_counts['Layout Tables'] = 0
-                category_issues['Layout Tables'] = []
-            category_counts['Layout Tables'] += len(table_check.get('issues', []))
-            for issue_text in table_check['issues']:
-                category_issues['Layout Tables'].append({
-                    'location': 'Document',
-                    'description': issue_text.replace('WARNING: ', '')
-                })
-
-        if heading_check.get('issues'):
-            if 'Document Structure' not in category_counts:
-                category_counts['Document Structure'] = 0
-                category_issues['Document Structure'] = []
-            category_counts['Document Structure'] += len(heading_check.get('issues', []))
-            for issue_text in heading_check['issues']:
-                category_issues['Document Structure'].append({
-                    'location': 'Document',
-                    'description': issue_text.replace('WARNING: ', '')
-                })
-
-        if list_check.get('issues'):
-            if 'Lists' not in category_counts:
-                category_counts['Lists'] = 0
-            category_counts['Lists'] += len(list_check.get('issues', []))
-
-        # Convert growth mindset analysis markdown to HTML
-        if growth_mindset_analysis.get('status') == 'success' and 'analysis' in growth_mindset_analysis:
-            growth_mindset_analysis['analysis_html'] = markdown.markdown(
-                growth_mindset_analysis['analysis'],
-                extensions=['extra', 'nl2br', 'sane_lists']
-            )
-
-        # Convert quality analysis markdown to HTML
-        if quality_analysis.get('status') == 'success' and 'analysis' in quality_analysis:
-            quality_analysis['analysis_html'] = markdown.markdown(
-                quality_analysis['analysis'],
-                extensions=['extra', 'nl2br', 'sane_lists']
-            )
-
-        # Convert image alt text analysis markdown to HTML
-        if image_alt_analysis.get('status') == 'success' and 'analysis' in image_alt_analysis:
-            image_alt_analysis['analysis_html'] = markdown.markdown(
-                image_alt_analysis['analysis'],
-                extensions=['extra', 'nl2br', 'sane_lists']
-            )
-            analysis_lower = image_alt_analysis['analysis'].lower()
-            image_alt_analysis['has_issues'] = not (
-                'all institutional logos have meaningful alt text' in analysis_lower
-                and 'all alt text is clear, concise, and descriptive' in analysis_lower
-            )
-
         results = {
             'filename': filename,
             'total_issues': total_web_issues,
@@ -499,26 +487,20 @@ def _process_docx(filename: str, upload_path: str):
             'category_issues': category_issues,
             'category_help': CATEGORY_HELP,
             'report_text': report_text,
-            'summary_section': summary_section,
             'marked_file': marked_filename,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'summary_message': summary_message,
             'summary_status': summary_status,
             'growth_mindset_analysis': growth_mindset_analysis,
             'quality_analysis': quality_analysis,
-            'image_alt_analysis': image_alt_analysis
+            'image_alt_analysis': image_alt_analysis,
+            'checks': checks,
         }
 
-        # Store scan results in analytics database
+        # --- Analytics ---
         try:
-            instructor_name = None
-            department = None
-            course_subject = None
-            course_number = None
-            course_title = None
-            semester = None
+            instructor_name = department = course_subject = course_number = course_title = semester = None
             metadata_extraction_status = course_metadata.get('status', 'error')
-
             if course_metadata.get('status') == 'success':
                 instructor_name = course_metadata.get('instructor_name')
                 department = course_metadata.get('department')
@@ -527,14 +509,16 @@ def _process_docx(filename: str, upload_path: str):
                 course_title = course_metadata.get('course_title')
                 semester = course_metadata.get('semester')
 
-            # ===== LANGUAGE & TONE (Growth Mindset) - 6 subcategories =====
-            language_tone_summary = None
-            growth_mindset_score = None
-            language_tone_subcategories = {}
+            accessibility_summary = None
+            if category_counts:
+                top_issues = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                accessibility_summary = '; '.join([f"{cat}: {count}" for cat, count in top_issues])
 
+            # Growth mindset analytics
+            language_tone_summary = growth_mindset_score = None
+            language_tone_subcategories = {}
             if growth_mindset_analysis.get('status') == 'success':
                 analysis_text = growth_mindset_analysis.get('analysis', '')
-
                 subcategory_patterns = [
                     (r'(?:QUESTION\s*1|Growth\s*Mindset)[^\n]*\n\**Assessment:?\**\s*(Strong|Moderate|Weak|Not\s*Addressed)', 'Growth Mindset'),
                     (r'(?:QUESTION\s*2|Normalizing\s*Challenge)[^\n]*\n\**Assessment:?\**\s*(Strong|Moderate|Weak|Not\s*Addressed)', 'Normalizing Challenge'),
@@ -543,76 +527,53 @@ def _process_docx(filename: str, upload_path: str):
                     (r'(?:QUESTION\s*5|Normalizing\s*Student\s*Challenges)[^\n]*\n\**Assessment:?\**\s*(Strong|Moderate|Weak|Not\s*Addressed)', 'Normalizing Student Challenges'),
                     (r'(?:QUESTION\s*6|Normalizing\s*Academic\s*Support)[^\n]*\n\**Assessment:?\**\s*(Strong|Moderate|Weak|Not\s*Addressed)', 'Normalizing Academic Support'),
                 ]
-
                 for pattern, category in subcategory_patterns:
-                    match = re.search(pattern, analysis_text, re.IGNORECASE)
-                    if match:
-                        assessment = match.group(1).strip().title()
+                    m = re.search(pattern, analysis_text, re.IGNORECASE)
+                    if m:
+                        assessment = m.group(1).strip().title()
                         if 'not' in assessment.lower():
                             assessment = 'Not Addressed'
                         language_tone_subcategories[category] = assessment
-
                 strong_count = sum(1 for v in language_tone_subcategories.values() if v == 'Strong')
                 weak_count = sum(1 for v in language_tone_subcategories.values() if v in ['Weak', 'Not Addressed'])
-
                 if strong_count >= 4:
                     language_tone_summary = f'Strong ({strong_count}/6 areas)'
                 elif weak_count >= 3:
                     language_tone_summary = f'Needs work ({weak_count}/6 areas weak)'
                 else:
                     language_tone_summary = 'Mixed results'
-
-                score_match = re.search(r'(?:score|rating|overall)[:\s]*(\d+)(?:/10|\s*out of\s*10)?', analysis_text, re.IGNORECASE)
-                if score_match:
-                    growth_mindset_score = int(score_match.group(1))
-
+                sm = re.search(r'(?:score|rating|overall)[:\s]*(\d+)(?:/10|\s*out of\s*10)?', analysis_text, re.IGNORECASE)
+                if sm:
+                    growth_mindset_score = int(sm.group(1))
             elif growth_mindset_analysis.get('error'):
                 language_tone_summary = 'Analysis unavailable'
 
-            # ===== CLARITY & QUALITY - 4 subcategories =====
+            # Quality analytics
             clarity_quality_summary = None
             quality_issues_count = 0
             clarity_quality_subcategories = {}
-
             if quality_analysis.get('status') == 'success':
                 analysis_text = quality_analysis.get('analysis', '')
-
-                sections = [
+                sections_pat = [
                     (r'1\.?\s*UNDEFINED\s*(?:COURSE\s*)?TERMINOLOGY(.*?)(?=\n\s*(?:##\s*)?2\.|$)', 'Undefined Terminology', r'\*?\*?Term\*?\*?\s*:\s*[""\'\']'),
                     (r'2\.?\s*TONE\s*(?:AND\s*INCLUSIVITY|ISSUES)(.*?)(?=\n\s*(?:##\s*)?3\.|$)', 'Tone Issues', r'\*?\*?Issue\*?\*?\s*:\s*[""\'\']'),
                     (r'3\.?\s*(?:POLICIES\s*THAT\s*MAY\s*)?CONFUS(?:ING|E)(.*?)(?=\n\s*(?:##\s*)?4\.|$)', 'Confusing Policies', r'\*?\*?Policy\*?\*?\s*:\s*[""\'\']'),
                     (r'4\.?\s*(?:INCONSISTENT\s*)?FORMAT(?:TING)?(?:\s*INCONSISTENC(?:IES|Y))?(.*?)(?=\n\s*(?:##\s*)?5\.|$)', 'Formatting Inconsistencies', r'\*?\*?Element\s*type\*?\*?\s*:\s*'),
                 ]
-
-                for section_pattern, category, issue_pattern in sections:
-                    match = re.search(section_pattern, analysis_text, re.IGNORECASE | re.DOTALL)
-                    if match:
-                        section_text = match.group(1)
-                        issues = len(re.findall(issue_pattern, section_text, re.IGNORECASE))
-                        clarity_quality_subcategories[category] = issues
-                    else:
-                        clarity_quality_subcategories[category] = 0
-
+                for section_pattern, category, issue_pattern in sections_pat:
+                    m = re.search(section_pattern, analysis_text, re.IGNORECASE | re.DOTALL)
+                    clarity_quality_subcategories[category] = len(re.findall(issue_pattern, m.group(1), re.IGNORECASE)) if m else 0
                 quality_issues_count = sum(clarity_quality_subcategories.values())
-                categories_with_issues = sum(1 for v in clarity_quality_subcategories.values() if v > 0)
-
+                cats_with_issues = sum(1 for v in clarity_quality_subcategories.values() if v > 0)
                 if quality_issues_count == 0:
                     clarity_quality_summary = 'Excellent clarity'
-                elif categories_with_issues == 1:
-                    problem_cat = [k for k, v in clarity_quality_subcategories.items() if v > 0][0]
+                elif cats_with_issues == 1:
+                    problem_cat = next(k for k, v in clarity_quality_subcategories.items() if v > 0)
                     clarity_quality_summary = f'{problem_cat}: {quality_issues_count} issue(s)'
                 else:
-                    clarity_quality_summary = f'{quality_issues_count} issues in {categories_with_issues} areas'
-
+                    clarity_quality_summary = f'{quality_issues_count} issues in {cats_with_issues} areas'
             elif quality_analysis.get('error'):
                 clarity_quality_summary = 'Analysis unavailable'
-
-            # Generate accessibility summary from top issues
-            accessibility_summary = None
-            if category_counts:
-                top_issues = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-                if top_issues:
-                    accessibility_summary = '; '.join([f"{cat}: {count}" for cat, count in top_issues])
 
             scan_id = analytics_db.store_scan_result(
                 filename=filename,
@@ -634,17 +595,62 @@ def _process_docx(filename: str, upload_path: str):
                 accessibility_summary=accessibility_summary,
                 metadata_extraction_status=metadata_extraction_status,
                 language_tone_subcategories=language_tone_subcategories,
-                clarity_quality_subcategories=clarity_quality_subcategories
+                clarity_quality_subcategories=clarity_quality_subcategories,
             )
             results['scan_id'] = scan_id
         except Exception as db_error:
-            # Don't fail the request if analytics storage fails
             logger.error('Analytics storage error: %s', db_error)
 
         return results
 
     except Exception as e:
         logger.error('Error in _process_docx for %s: %s\n%s', filename, e, traceback.format_exc())
+        return None
+
+
+def _process_docx_phase2(filename: str, upload_path: str):
+    """Phase 2: growth mindset, quality, and image alt text LLM analyses.
+    Returns a dict with the three analyses converted to HTML, or None on error."""
+    try:
+        _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                      'assets', 'Uniform-Syllabus-Template-1.docx')
+        checker = SyllabusChecker(_template_path, upload_path)
+
+        growth_mindset_analysis = checker.analyze_growth_mindset_and_belonging()
+        quality_analysis = checker.analyze_syllabus_quality()
+        image_alt_analysis = checker.analyze_image_alt_text()
+
+        if growth_mindset_analysis.get('status') == 'success' and 'analysis' in growth_mindset_analysis:
+            growth_mindset_analysis['analysis_html'] = markdown.markdown(
+                growth_mindset_analysis['analysis'],
+                extensions=['extra', 'nl2br', 'sane_lists']
+            )
+
+        if quality_analysis.get('status') == 'success' and 'analysis' in quality_analysis:
+            quality_analysis['analysis_html'] = markdown.markdown(
+                quality_analysis['analysis'],
+                extensions=['extra', 'nl2br', 'sane_lists']
+            )
+
+        if image_alt_analysis.get('status') == 'success' and 'analysis' in image_alt_analysis:
+            image_alt_analysis['analysis_html'] = markdown.markdown(
+                image_alt_analysis['analysis'],
+                extensions=['extra', 'nl2br', 'sane_lists']
+            )
+            analysis_lower = image_alt_analysis['analysis'].lower()
+            image_alt_analysis['has_issues'] = not (
+                'all institutional logos have meaningful alt text' in analysis_lower
+                and 'all alt text is clear, concise, and descriptive' in analysis_lower
+            )
+
+        return {
+            'growth_mindset_analysis': growth_mindset_analysis,
+            'quality_analysis': quality_analysis,
+            'image_alt_analysis': image_alt_analysis,
+        }
+
+    except Exception as e:
+        logger.error('Error in _process_docx_phase2 for %s: %s\n%s', filename, e, traceback.format_exc())
         return None
 
 
@@ -666,11 +672,29 @@ def upload_file():
     filename = safe_filename(file.filename)
     upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(upload_path)
-    results = _process_docx(filename, upload_path)
+    selected_checks = set(request.form.getlist('checks')) & {'sections', 'access', 'mindset', 'quality'}
+    results = _process_docx(filename, upload_path, selected_checks or None)
     if results is None:
         flash('An error occurred while processing your file. Please try again.', 'error')
         return redirect(url_for('index'))
     return render_template('results.html', results=results)
+
+
+@app.route('/deepen/<int:scan_id>', methods=['POST'])
+@csrf.exempt
+@limiter.limit('10 per hour')
+def deepen_analysis(scan_id):
+    """Run Phase 2 analysis (growth mindset, quality, inclusivity) on a previously uploaded file."""
+    filename = analytics_db.get_scan_filename(scan_id)
+    if not filename:
+        return ('Scan not found.', 404)
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(filename))
+    if not os.path.exists(upload_path):
+        return ('File no longer available — please re-upload your syllabus to run this analysis.', 410)
+    results = _process_docx_phase2(filename, upload_path)
+    if results is None:
+        return ('Analysis failed.', 500)
+    return render_template('_phase2_partial.html', results=results)
 
 
 @app.route('/batch-upload', methods=['POST'])

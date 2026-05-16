@@ -1,0 +1,103 @@
+<style>
+.growth-mindset-analysis h2 { color:#0d6efd;font-size:1.4rem;font-weight:700;margin-top:1.5rem;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:2px solid #0d6efd; }
+.growth-mindset-analysis h3 { color:#333;font-size:1.1rem;font-weight:600;margin-top:1rem;margin-bottom:.5rem; }
+.growth-mindset-analysis strong { color:#000;font-weight:600; }
+.growth-mindset-analysis ul,.growth-mindset-analysis ol { margin-left:1.5rem;margin-bottom:1rem; }
+.growth-mindset-analysis li { margin-bottom:.5rem; }
+.growth-mindset-analysis p { margin-bottom:1rem; }
+.growth-mindset-analysis hr { border-top:1px solid #dee2e6;margin:2rem 0; }
+.growth-mindset-analysis code { background-color:#e9ecef;padding:2px 6px;border-radius:3px;font-size:.9em; }
+.growth-mindset-analysis pre { background-color:#e7f5e7;border:2px solid #28a745;border-left:5px solid #28a745;padding:1rem;border-radius:5px;margin:1rem 0;white-space:pre-wrap;word-wrap:break-word; }
+.growth-mindset-analysis pre code { background-color:transparent;padding:0;color:#1e4620;font-size:.95em;line-height:1.6; }
+.growth-mindset-analysis blockquote { border-left:4px solid #6c757d;padding-left:1rem;margin-left:0;color:#6c757d;font-style:italic; }
+</style>
+
+<!-- Step 3: Belonging & Growth Mindset -->
+<div class="report-section mb-4">
+    <div class="section-header section-header-tone">
+        <h4><i class="bi bi-chat-heart"></i> Step 3: Belonging &amp; Growth Mindset</h4>
+    </div>
+    <div class="section-body" id="growthMindsetContent">
+        {% if results.growth_mindset_analysis.status == 'success' %}
+            <div class="alert alert-success border-0 mb-3" style="background:linear-gradient(135deg,#e8f5e9 0%,#f1f8e9 100%);">
+                <i class="bi bi-stars text-success"></i> <strong>High-Impact Section:</strong>
+                Research shows that syllabus language significantly affects student success and belonging.
+                Below you'll find specific suggestions with <strong>copy-paste ready text</strong> you can use directly.
+                <hr class="my-2">
+                <p class="small mb-0">
+                    <i class="bi bi-book"></i> Based on research from the
+                    <a href="https://studentexperienceproject.org/" target="_blank" rel="noopener noreferrer">Student Experience Project</a>
+                </p>
+            </div>
+            <div class="growth-mindset-analysis">
+                {{ results.growth_mindset_analysis.analysis_html | safe }}
+            </div>
+        {% elif results.growth_mindset_analysis.error %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> {{ results.growth_mindset_analysis.error }}
+            </div>
+        {% else %}
+            <div class="alert alert-secondary">
+                <i class="bi bi-info-circle"></i> Language analysis is not available at this time.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Step 4: Clarity & Quality -->
+<div class="report-section mb-4">
+    <div class="section-header section-header-quality">
+        <h4><i class="bi bi-stars"></i> Step 4: Clarity &amp; Quality</h4>
+    </div>
+    <div class="section-body" id="qualityAnalysisContent">
+        {% if results.quality_analysis.status == 'success' %}
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle"></i> <strong>About This Analysis:</strong>
+                This section identifies terminology, policies, or formatting that may confuse students.
+                <hr class="my-3">
+                <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb"></i> What This Checks</h6>
+                <ul class="small mb-0">
+                    <li><strong>Undefined Terminology:</strong> Technical terms or jargon that students may not understand</li>
+                    <li><strong>Tone Issues:</strong> Language that may feel punitive or exclusionary</li>
+                    <li><strong>Confusing Policies:</strong> Rules that may create barriers or confusion</li>
+                    <li><strong>Formatting Inconsistencies:</strong> Variations in dates, headings, or other elements</li>
+                </ul>
+            </div>
+            <div class="growth-mindset-analysis">
+                {{ results.quality_analysis.analysis_html | safe }}
+            </div>
+        {% elif results.quality_analysis.error %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> {{ results.quality_analysis.error }}
+            </div>
+        {% else %}
+            <div class="alert alert-secondary">
+                <i class="bi bi-info-circle"></i> Quality analysis is not available at this time.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Image Alt Text Analysis -->
+{% if results.image_alt_analysis.status == 'success' and results.image_alt_analysis.has_issues %}
+<div class="report-section mb-4">
+    <div class="section-header section-header-access">
+        <h4>
+            <i class="bi bi-image"></i> Image Alt Text Quality
+            {% if results.image_alt_analysis.image_count %}
+            <span class="badge bg-secondary ms-2">{{ results.image_alt_analysis.image_count }} image{{ 's' if results.image_alt_analysis.image_count > 1 else '' }}</span>
+            {% endif %}
+        </h4>
+    </div>
+    <div class="section-body">
+        <p class="text-muted small mb-3">AI-powered analysis of alt text quality for logos and images in your syllabus.</p>
+        <div class="growth-mindset-analysis">
+            {{ results.image_alt_analysis.analysis_html | safe }}
+        </div>
+    </div>
+</div>
+{% elif results.image_alt_analysis.error %}
+<div class="alert alert-warning mb-4">
+    <i class="bi bi-exclamation-triangle"></i> Image alt text analysis: {{ results.image_alt_analysis.error }}
+</div>
+{% endif %}

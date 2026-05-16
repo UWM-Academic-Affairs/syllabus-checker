@@ -146,6 +146,16 @@ def init_db():
     conn.commit()
     conn.close()
 
+def get_scan_filename(scan_id: int) -> Optional[str]:
+    """Return the uploaded filename for a given scan ID."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT filename FROM scans WHERE id = ?', (scan_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row['filename'] if row else None
+
+
 def store_scan_result(
     filename: str,
     instructor_name: str = None,
