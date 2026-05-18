@@ -102,6 +102,40 @@ class OutputMixin:
         self._missing_sections = missing_sections or []
         self._growth_mindset_analysis = growth_mindset_analysis or {}
 
+        def insert_callout(para, label, description, fill_hex='FFF0E8'):
+            """Insert a small shaded note paragraph immediately after *para* in the body."""
+            from lxml import etree
+            W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+            XML = 'http://www.w3.org/XML/1998/namespace'
+            new_p = etree.SubElement(para._p.getparent(), f'{{{W}}}p')
+            pPr = etree.SubElement(new_p, f'{{{W}}}pPr')
+            shd = etree.SubElement(pPr, f'{{{W}}}shd')
+            shd.set(f'{{{W}}}val', 'clear')
+            shd.set(f'{{{W}}}color', 'auto')
+            shd.set(f'{{{W}}}fill', fill_hex)
+            ind = etree.SubElement(pPr, f'{{{W}}}ind')
+            ind.set(f'{{{W}}}left', '360')
+            rPr_p = etree.SubElement(pPr, f'{{{W}}}rPr')
+            sz_p = etree.SubElement(rPr_p, f'{{{W}}}sz')
+            sz_p.set(f'{{{W}}}val', '18')
+            r = etree.SubElement(new_p, f'{{{W}}}r')
+            rPr = etree.SubElement(r, f'{{{W}}}rPr')
+            etree.SubElement(rPr, f'{{{W}}}b')
+            sz = etree.SubElement(rPr, f'{{{W}}}sz')
+            sz.set(f'{{{W}}}val', '18')
+            t = etree.SubElement(r, f'{{{W}}}t')
+            t.text = f'▶ {label}: '
+            t.set(f'{{{XML}}}space', 'preserve')
+            r2 = etree.SubElement(new_p, f'{{{W}}}r')
+            rPr2 = etree.SubElement(r2, f'{{{W}}}rPr')
+            sz2 = etree.SubElement(rPr2, f'{{{W}}}sz')
+            sz2.set(f'{{{W}}}val', '18')
+            t2 = etree.SubElement(r2, f'{{{W}}}t')
+            t2.text = description
+            t2.set(f'{{{XML}}}space', 'preserve')
+            # Move new_p to immediately follow para._p
+            para._p.addnext(new_p)
+
         # Running counter for Word comment IDs (must be unique integers)
         comment_id_counter = [0]
 
@@ -127,7 +161,7 @@ class OutputMixin:
                     table_issues[issue.table_index] = []
                 table_issues[issue.table_index].append(issue)
 
-        # Mark top-level paragraphs (not in tables) — highlight + Word comment
+        # Mark top-level paragraphs — inline callout + Word comment
         for (table_idx, row_idx, cell_idx), issues_list in para_issues_by_location.items():
             if table_idx is None:
                 for issue in issues_list:
@@ -137,14 +171,12 @@ class OutputMixin:
                         para_text = para.text.strip()
 
                         if para_text and (para_text in original_text or original_text in para_text):
-                            # Add a Word comment — the speech-bubble annotation is
-                            # sufficient to mark the issue; no body-text highlight needed.
                             label = self.ISSUE_DISPLAY_LABELS.get(issue.issue_type, issue.issue_type.replace('_', ' ').title())
-                            comment_text = f"{label}\n{issue.description}"
-                            _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                            _add_word_comment(marked_doc, para, next_comment_id(), f"{label}\n{issue.description}")
+                            insert_callout(para, label, issue.description)
                             break
 
-        # Mark paragraphs in table cells — Word comment only
+        # Mark paragraphs in table cells — inline callout + Word comment
         for (table_idx, row_idx, cell_idx), issues_list in para_issues_by_location.items():
             if table_idx is not None and table_idx < len(marked_doc.tables):
                 table = marked_doc.tables[table_idx]
@@ -159,8 +191,8 @@ class OutputMixin:
 
                             if para_text and (para_text in original_text or original_text in para_text):
                                 label = self.ISSUE_DISPLAY_LABELS.get(issue.issue_type, issue.issue_type.replace('_', ' ').title())
-                                comment_text = f"{label}\n{issue.description}"
-                                _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                                _add_word_comment(marked_doc, para, next_comment_id(), f"{label}\n{issue.description}")
+                                insert_callout(para, label, issue.description)
                                 break
 
         # Mark tables with issues — one comment on the first cell per table
