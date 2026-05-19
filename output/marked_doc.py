@@ -223,6 +223,41 @@ class OutputMixin:
                     anchor_para = first_cell.paragraphs[0] if first_cell.paragraphs else first_cell.add_paragraph()
                     _add_word_comment(marked_doc, anchor_para, next_comment_id(), comment_text)
 
+        # Inline callouts for quality analysis — place each flagged term near where it appears
+        if quality_analysis and quality_analysis.get('status') == 'success':
+            qa_text = quality_analysis.get('analysis', '')
+            # Collect all paragraphs in the document (body + table cells)
+            all_doc_paras = list(marked_doc.paragraphs)
+            for tbl in marked_doc.tables:
+                for row in tbl.rows:
+                    for cell in row.cells:
+                        all_doc_paras.extend(cell.paragraphs)
+
+            # Match bullet entries like:  • Term: "Rhetorical Analysis"
+            #                             • Issue: "punitive tone"
+            #                             • Policy: "Late work"
+            item_re = re.compile(
+                r'[•\-]\s*(?:\*\*)?(?:Term|Issue|Policy)(?:\*\*)?:\s*'
+                r'["“‘]?([^"”’\n\r]{2,80})["”’]?'
+                r'((?:\n[ \t]+[-–••][^\n]+)*)',
+                re.MULTILINE,
+            )
+            placed = set()
+            for m in item_re.finditer(qa_text):
+                term = m.group(1).strip().strip('"“”‘’.,;:')
+                if not term or len(term) < 3 or term.lower() in placed:
+                    continue
+                sub_lines = [l.strip().lstrip('-•– ') for l in m.group(2).split('\n') if l.strip()]
+                first_sub = sub_lines[0] if sub_lines else ''
+                desc = f'"{term}"'
+                if first_sub:
+                    desc += f' — {first_sub}'
+                for para in all_doc_paras:
+                    if para.text.strip() and term.lower() in para.text.lower():
+                        insert_callout(para, 'Clarity Note', desc, fill_hex='FAFAD2')
+                        placed.add(term.lower())
+                        break
+
         # Add document-level accessibility issues (no paragraph/table anchor)
         doc_level_issues = [
             issue for issue in self.issues
