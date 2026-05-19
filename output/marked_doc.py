@@ -247,7 +247,7 @@ class OutputMixin:
                 term = m.group(1).strip().strip('"“”‘’.,;:')
                 if not term or len(term) < 3 or term.lower() in placed:
                     continue
-                sub_lines = [l.strip().lstrip('-•– ') for l in m.group(2).split('\n') if l.strip()]
+                sub_lines = [ln.strip().lstrip('-•– ') for ln in m.group(2).split('\n') if ln.strip()]
                 first_sub = sub_lines[0] if sub_lines else ''
                 desc = f'"{term}"'
                 if first_sub:
