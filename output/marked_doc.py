@@ -223,15 +223,59 @@ class OutputMixin:
                     anchor_para = first_cell.paragraphs[0] if first_cell.paragraphs else first_cell.add_paragraph()
                     _add_word_comment(marked_doc, anchor_para, next_comment_id(), comment_text)
 
+        # Collect all paragraphs once for both inline-callout passes below
+        all_doc_paras = list(marked_doc.paragraphs)
+        for tbl in marked_doc.tables:
+            for row in tbl.rows:
+                for cell in row.cells:
+                    all_doc_paras.extend(cell.paragraphs)
+
+        # Inline callouts for growth mindset — anchor each non-Strong question to its evidence quote
+        if self._growth_mindset_analysis.get('status') == 'success':
+            gm_text = self._growth_mindset_analysis.get('analysis', '')
+            _stopwords = {
+                'this', 'that', 'with', 'from', 'have', 'will', 'your', 'their',
+                'they', 'been', 'also', 'more', 'about', 'into', 'than', 'when',
+                'which', 'there', 'these', 'those', 'each', 'some', 'what', 'does',
+                'course', 'students', 'student',
+            }
+
+            def _word_overlap(text_a, text_b, min_len=4, threshold=3):
+                words_a = {w for w in re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_a.lower())
+                           if w not in _stopwords}
+                words_b = set(re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_b.lower()))
+                return len(words_a & words_b) >= threshold
+
+            section_re = re.compile(
+                r'## QUESTION \d+: ([^\n]+)\n.*?\*\*Assessment:\*\*\s*([^\n]+)'
+                r'.*?\*\*Evidence:\*\*(.*?)(?=\*\*Suggestions:|---|$)',
+                re.DOTALL,
+            )
+            quote_re = re.compile(r'["“]([^"”\n]{15,200})["”]')
+
+            for sec_m in section_re.finditer(gm_text):
+                title = sec_m.group(1).strip()
+                assessment = sec_m.group(2).strip()
+                evidence = sec_m.group(3)
+                if assessment.lower().startswith('strong'):
+                    continue
+                for quote in quote_re.findall(evidence):
+                    for para in all_doc_paras:
+                        if para.text.strip() and _word_overlap(quote, para.text):
+                            insert_callout(
+                                para,
+                                f'Belonging — {title}',
+                                f'Assessment: {assessment}',
+                                fill_hex='E8EEF5',
+                            )
+                            break
+                    else:
+                        continue
+                    break  # one callout per question is enough
+
         # Inline callouts for quality analysis — place each flagged term near where it appears
         if quality_analysis and quality_analysis.get('status') == 'success':
             qa_text = quality_analysis.get('analysis', '')
-            # Collect all paragraphs in the document (body + table cells)
-            all_doc_paras = list(marked_doc.paragraphs)
-            for tbl in marked_doc.tables:
-                for row in tbl.rows:
-                    for cell in row.cells:
-                        all_doc_paras.extend(cell.paragraphs)
 
             # Match bullet entries like:  • Term: "Rhetorical Analysis"
             #                             • Issue: "punitive tone"
