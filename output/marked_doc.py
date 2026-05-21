@@ -230,19 +230,19 @@ class OutputMixin:
                 for cell in row.cells:
                     all_doc_paras.extend(cell.paragraphs)
 
-        # Inline callouts for growth mindset — anchor each non-Strong question to its evidence quote
+        # Inline callouts for growth mindset — anchor each non-Strong question to its evidence
         if self._growth_mindset_analysis.get('status') == 'success':
             gm_text = self._growth_mindset_analysis.get('analysis', '')
-            _stopwords = {
+            _gm_stopwords = {
                 'this', 'that', 'with', 'from', 'have', 'will', 'your', 'their',
                 'they', 'been', 'also', 'more', 'about', 'into', 'than', 'when',
                 'which', 'there', 'these', 'those', 'each', 'some', 'what', 'does',
-                'course', 'students', 'student',
+                'such', 'just', 'like', 'very', 'well', 'only', 'both',
             }
 
-            def _word_overlap(text_a, text_b, min_len=4, threshold=3):
+            def _word_overlap(text_a, text_b, min_len=4, threshold=2):
                 words_a = {w for w in re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_a.lower())
-                           if w not in _stopwords}
+                           if w not in _gm_stopwords}
                 words_b = set(re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_b.lower()))
                 return len(words_a & words_b) >= threshold
 
@@ -251,7 +251,8 @@ class OutputMixin:
                 r'.*?\*\*Evidence:\*\*(.*?)(?=\*\*Suggestions:|---|$)',
                 re.DOTALL,
             )
-            quote_re = re.compile(r'["“]([^"”\n]{15,200})["”]')
+            # Straight quotes “ “ and curly quotes “” and single ‘’
+            quote_re = re.compile(r'[““‘]([^””’\n]{8,200})[“”’]')
 
             for sec_m in section_re.finditer(gm_text):
                 title = sec_m.group(1).strip()
@@ -259,9 +260,11 @@ class OutputMixin:
                 evidence = sec_m.group(3)
                 if assessment.lower().startswith('strong'):
                     continue
-                for quote in quote_re.findall(evidence):
+                # Try quoted passages first; fall back to the full evidence block
+                candidates = quote_re.findall(evidence) or [evidence]
+                for candidate in candidates:
                     for para in all_doc_paras:
-                        if para.text.strip() and _word_overlap(quote, para.text):
+                        if para.text.strip() and _word_overlap(candidate, para.text):
                             insert_callout(
                                 para,
                                 f'Belonging — {title}',
