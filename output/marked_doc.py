@@ -246,35 +246,55 @@ class OutputMixin:
                 words_b = set(re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_b.lower()))
                 return len(words_a & words_b) >= threshold
 
+            # Capture evidence AND suggestions so the comment includes actionable text
             section_re = re.compile(
                 r'## QUESTION \d+: ([^\n]+)\n.*?\*\*Assessment:\*\*\s*([^\n]+)'
-                r'.*?\*\*Evidence:\*\*(.*?)(?=\*\*Suggestions:|---|$)',
+                r'.*?\*\*Evidence:\*\*(.*?)'
+                r'(?:\*\*Suggestions:\*\*(.*?))?'
+                r'(?=## QUESTION|\Z)',
                 re.DOTALL,
             )
-            # Straight quotes “ “ and curly quotes “” and single ‘’
-            quote_re = re.compile(r'[““‘]([^””’\n]{8,200})[“”’]')
-
+            # Matches straight, left/right double and single quotes
+            _QUOTE_CHARS = "\u201c\u201d\u2018\u2019\"'"
+            quote_re = re.compile(
+                "[" + _QUOTE_CHARS + "]"
+                r"([^\n]{8,200})"
+                "[" + _QUOTE_CHARS + "]"
+            )
             for sec_m in section_re.finditer(gm_text):
                 title = sec_m.group(1).strip()
                 assessment = sec_m.group(2).strip()
-                evidence = sec_m.group(3)
+                evidence = sec_m.group(3) or ''
+                suggestions_raw = sec_m.group(4) or ''
                 if assessment.lower().startswith('strong'):
                     continue
+
+                # Pull the first actionable suggestion bullet
+                first_sugg = ''
+                for ln in suggestions_raw.split('\n'):
+                    stripped = ln.strip().lstrip('-−1234567890. ')
+                    if stripped and len(stripped) > 20:
+                        first_sugg = stripped[:220]
+                        break
+
+                comment_lines = [
+                    'Belonging & Growth Mindset — ' + title,
+                    'Assessment: ' + assessment,
+                ]
+                if first_sugg:
+                    comment_lines.append('Suggestion: ' + first_sugg)
+                comment_text = '\n'.join(comment_lines)
+
                 # Try quoted passages first; fall back to the full evidence block
                 candidates = quote_re.findall(evidence) or [evidence]
                 for candidate in candidates:
                     for para in all_doc_paras:
                         if para.text.strip() and _word_overlap(candidate, para.text):
-                            insert_callout(
-                                para,
-                                f'Belonging — {title}',
-                                f'Assessment: {assessment}',
-                                fill_hex='E8EEF5',
-                            )
+                            _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
                             break
                     else:
                         continue
-                    break  # one callout per question is enough
+                    break  # one comment per question is enough
 
         # Inline callouts for quality analysis — place each flagged term near where it appears
         if quality_analysis and quality_analysis.get('status') == 'success':
@@ -285,23 +305,23 @@ class OutputMixin:
             #                             • Policy: "Late work"
             item_re = re.compile(
                 r'[•\-]\s*(?:\*\*)?(?:Term|Issue|Policy)(?:\*\*)?:\s*'
-                r'["“‘]?([^"”’\n\r]{2,80})["”’]?'
+                '[“”"]?([^“”"\n\r]{2,80})[“”"]?'
                 r'((?:\n[ \t]+[-–••][^\n]+)*)',
                 re.MULTILINE,
             )
             placed = set()
             for m in item_re.finditer(qa_text):
-                term = m.group(1).strip().strip('"“”‘’.,;:')
+                term = m.group(1).strip().strip('“”‘’".,;:')
                 if not term or len(term) < 3 or term.lower() in placed:
                     continue
                 sub_lines = [ln.strip().lstrip('-•– ') for ln in m.group(2).split('\n') if ln.strip()]
                 first_sub = sub_lines[0] if sub_lines else ''
-                desc = f'"{term}"'
+                desc = '"' + term + '"'
                 if first_sub:
                     desc += f' — {first_sub}'
                 for para in all_doc_paras:
                     if para.text.strip() and term.lower() in para.text.lower():
-                        insert_callout(para, 'Clarity Note', desc, fill_hex='FAFAD2')
+                        _add_word_comment(marked_doc, para, next_comment_id(), f'Clarity Note\n{desc}')
                         placed.add(term.lower())
                         break
 
