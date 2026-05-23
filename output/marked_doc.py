@@ -296,32 +296,57 @@ class OutputMixin:
                         continue
                     break  # one comment per question is enough
 
-        # Inline callouts for quality analysis — place each flagged term near where it appears
+        # Inline comments for quality analysis — place each flagged item near where it appears
         if quality_analysis and quality_analysis.get('status') == 'success':
             qa_text = quality_analysis.get('analysis', '')
 
-            # Match bullet entries like:  • Term: "Rhetorical Analysis"
-            #                             • Issue: "punitive tone"
-            #                             • Policy: "Late work"
+            _qa_stopwords = {
+                'this', 'that', 'with', 'from', 'have', 'will', 'your', 'their',
+                'they', 'been', 'also', 'more', 'about', 'into', 'than', 'when',
+                'which', 'there', 'these', 'those', 'each', 'some', 'what', 'does',
+                'such', 'just', 'like', 'very', 'well', 'only', 'both', 'should',
+            }
+
+            def _qa_word_overlap(text_a, text_b, min_len=4, threshold=2):
+                words_a = {w for w in re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_a.lower())
+                           if w not in _qa_stopwords}
+                words_b = set(re.findall(r'\b[a-zA-Z]{%d,}\b' % min_len, text_b.lower()))
+                return len(words_a & words_b) >= threshold
+
+            # Match all four quality-analysis label types
             item_re = re.compile(
-                r'[•\-]\s*(?:\*\*)?(?:Term|Issue|Policy)(?:\*\*)?:\s*'
-                '[“”"]?([^“”"\n\r]{2,80})[“”"]?'
-                r'((?:\n[ \t]+[-–••][^\n]+)*)',
+                r'[•\-]\s*(?:\*\*)?(?P<label>Term|Issue|Policy|Element\s+type)(?:\*\*)?:\s*'
+                r'[“””]?(?P<text>[^”””\n\r]{2,150})[“””]?'
+                r'(?P<sub>(?:\n[ \t]+[-–••][^\n]+)*)',
                 re.MULTILINE,
             )
+
+            _label_to_section = {
+                'term': 'Undefined Terminology',
+                'issue': 'Tone & Inclusivity',
+                'policy': 'Policy Clarity',
+                'element type': 'Inconsistent Formatting',
+            }
+
             placed = set()
             for m in item_re.finditer(qa_text):
-                term = m.group(1).strip().strip('“”‘’".,;:')
+                label_key = m.group('label').strip().lower()
+                term = m.group('text').strip().strip('””''”.,;:')
+                sub_text = m.group('sub') or ''
                 if not term or len(term) < 3 or term.lower() in placed:
                     continue
-                sub_lines = [ln.strip().lstrip('-•– ') for ln in m.group(2).split('\n') if ln.strip()]
+                sub_lines = [ln.strip().lstrip('-•–*# ') for ln in sub_text.split('\n') if ln.strip()]
                 first_sub = sub_lines[0] if sub_lines else ''
-                desc = '"' + term + '"'
+                section_label = _label_to_section.get(label_key, 'Clarity Note')
+                desc = '”' + term + '”'
                 if first_sub:
-                    desc += f' — {first_sub}'
+                    desc += f' — {first_sub[:200]}'
+                # Use term + sub-bullet context for word-overlap matching so paraphrased
+                # quotes and long policies still anchor to the right paragraph.
+                search_text = term + ' ' + ' '.join(sub_lines[:2])
                 for para in all_doc_paras:
-                    if para.text.strip() and term.lower() in para.text.lower():
-                        _add_word_comment(marked_doc, para, next_comment_id(), f'Clarity Note\n{desc}')
+                    if para.text.strip() and _qa_word_overlap(search_text, para.text):
+                        _add_word_comment(marked_doc, para, next_comment_id(), f'{section_label}\n{desc}')
                         placed.add(term.lower())
                         break
 
