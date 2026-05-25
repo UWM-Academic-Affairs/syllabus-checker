@@ -341,14 +341,22 @@ class OutputMixin:
                 desc = '”' + term + '”'
                 if first_sub:
                     desc += f' — {first_sub[:200]}'
-                # Use term + sub-bullet context for word-overlap matching so paraphrased
-                # quotes and long policies still anchor to the right paragraph.
+                # Try exact substring first (reliable for specific terms and verbatim
+                # quotes); fall back to word overlap for paraphrased or generic text.
                 search_text = term + ' ' + ' '.join(sub_lines[:2])
+                matched = False
                 for para in all_doc_paras:
-                    if para.text.strip() and _qa_word_overlap(search_text, para.text):
+                    if para.text.strip() and term.lower() in para.text.lower():
                         _add_word_comment(marked_doc, para, next_comment_id(), f'{section_label}\n{desc}')
                         placed.add(term.lower())
+                        matched = True
                         break
+                if not matched:
+                    for para in all_doc_paras:
+                        if para.text.strip() and _qa_word_overlap(search_text, para.text):
+                            _add_word_comment(marked_doc, para, next_comment_id(), f'{section_label}\n{desc}')
+                            placed.add(term.lower())
+                            break
 
         # Add document-level accessibility issues (no paragraph/table anchor)
         doc_level_issues = [
