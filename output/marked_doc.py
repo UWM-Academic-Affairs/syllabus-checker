@@ -331,16 +331,17 @@ class OutputMixin:
             placed = set()
             for m in item_re.finditer(qa_text):
                 label_key = m.group('label').strip().lower()
-                term = m.group('text').strip().strip('””''”.,;:')
+                term = m.group('text').strip().strip('"“”\'‘’.,;:')
                 sub_text = m.group('sub') or ''
                 if not term or len(term) < 3 or term.lower() in placed:
                     continue
-                sub_lines = [ln.strip().lstrip('-•–*# ') for ln in sub_text.split('\n') if ln.strip()]
+                sub_lines = [re.sub(r'\*+', '', ln.strip().lstrip('-•–*# '))
+                             for ln in sub_text.split('\n') if ln.strip()]
                 first_sub = sub_lines[0] if sub_lines else ''
                 section_label = _label_to_section.get(label_key, 'Clarity Note')
-                desc = '”' + term + '”'
+                desc = term
                 if first_sub:
-                    desc += f' — {first_sub[:200]}'
+                    desc += f'\n{first_sub[:200]}'
                 # Try exact substring first (reliable for specific terms and verbatim
                 # quotes); fall back to word overlap for paraphrased or generic text.
                 search_text = term + ' ' + ' '.join(sub_lines[:2])
