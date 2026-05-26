@@ -344,10 +344,18 @@ class OutputMixin:
                     desc += f'\n{first_sub[:200]}'
                 # Try exact substring first (reliable for specific terms and verbatim
                 # quotes); fall back to word overlap for paraphrased or generic text.
+                # Quote-normalised form handles terms like "The 'You Approach'" whose
+                # inner quotes differ from the quote style used in the document.
+                _all_quotes = re.compile(r'[“”‘’"\']+')
+                term_bare = _all_quotes.sub('', term).strip().lower()
                 search_text = term + ' ' + ' '.join(sub_lines[:2])
                 matched = False
                 for para in all_doc_paras:
-                    if para.text.strip() and term.lower() in para.text.lower():
+                    if not para.text.strip():
+                        continue
+                    para_lower = para.text.lower()
+                    para_bare = _all_quotes.sub('', para.text).strip().lower()
+                    if term.lower() in para_lower or (term_bare and term_bare in para_bare):
                         _add_word_comment(marked_doc, para, next_comment_id(), f'{section_label}\n{desc}')
                         placed.add(term.lower())
                         matched = True
