@@ -285,16 +285,26 @@ class OutputMixin:
                     comment_lines.append('Suggestion: ' + first_sugg)
                 comment_text = '\n'.join(comment_lines)
 
-                # Try quoted passages first; fall back to the full evidence block
+                # Try quoted passages first; fall back to the full evidence block.
+                # "Not Addressed" / "Weak" sections often have no quotable evidence,
+                # so if nothing matches anchor the comment to the first substantive
+                # body paragraph so all 6 questions always produce a comment.
                 candidates = quote_re.findall(evidence) or [evidence]
+                placed_gm = False
                 for candidate in candidates:
                     for para in all_doc_paras:
                         if para.text.strip() and _word_overlap(candidate, para.text):
                             _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                            placed_gm = True
                             break
-                    else:
-                        continue
-                    break  # one comment per question is enough
+                    if placed_gm:
+                        break
+                if not placed_gm:
+                    for para in all_doc_paras:
+                        t = para.text.strip()
+                        if t and len(t) > 20 and not t.startswith('▶'):
+                            _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                            break
 
         # Inline comments for quality analysis — place each flagged item near where it appears
         if quality_analysis and quality_analysis.get('status') == 'success':
