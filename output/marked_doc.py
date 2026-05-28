@@ -285,12 +285,20 @@ class OutputMixin:
                     comment_lines.append('Suggestion: ' + first_sugg)
                 comment_text = '\n'.join(comment_lines)
 
-                # Try quoted passages first; fall back to the full evidence block.
-                # "Not Addressed" / "Weak" sections often have no quotable evidence,
-                # so if nothing matches anchor the comment to the first substantive
-                # body paragraph so all 6 questions always produce a comment.
+                # Pull the "Where to place it:" guidance — the LLM names a specific
+                # section of the syllabus where new content should go, which gives
+                # us a much better anchor than the raw evidence for weak/absent items.
+                where_m = re.search(r'\*\*Where to place it:\*\*\s*([^\n]+)', suggestions_raw)
+                where_text = where_m.group(1).strip() if where_m else ''
+
+                # Placement priority:
+                #   1. Quoted evidence passages (best for Moderate — text exists in doc)
+                #   2. "Where to place it" guidance (best for Not Addressed / Weak)
+                #   3. First suggestion bullet (broader keyword fallback)
+                #   4. First substantive paragraph (last resort)
                 candidates = quote_re.findall(evidence) or [evidence]
                 placed_gm = False
+
                 for candidate in candidates:
                     for para in all_doc_paras:
                         if para.text.strip() and _word_overlap(candidate, para.text):
@@ -299,6 +307,23 @@ class OutputMixin:
                             break
                     if placed_gm:
                         break
+
+                if not placed_gm and where_text:
+                    for para in all_doc_paras:
+                        t = para.text.strip()
+                        if t and not t.startswith('▶') and _word_overlap(where_text, para.text):
+                            _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                            placed_gm = True
+                            break
+
+                if not placed_gm and first_sugg:
+                    for para in all_doc_paras:
+                        t = para.text.strip()
+                        if t and not t.startswith('▶') and _word_overlap(first_sugg, para.text):
+                            _add_word_comment(marked_doc, para, next_comment_id(), comment_text)
+                            placed_gm = True
+                            break
+
                 if not placed_gm:
                     for para in all_doc_paras:
                         t = para.text.strip()
