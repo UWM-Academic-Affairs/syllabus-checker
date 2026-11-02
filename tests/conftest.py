@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 # Keep Flask in development mode so SESSION_COOKIE_SECURE stays off and the
 # startup SECRET_KEY warning is suppressed during tests.
 os.environ.setdefault('FLASK_ENV', 'development')
-# Ensure no real OpenAI calls escape during tests.
-os.environ.pop('OPENAI_API_KEY', None)
+# Ensure no real Anthropic calls escape during tests.
+os.environ.pop('ANTHROPIC_API_KEY', None)
 
 import analytics_db  # noqa: E402 — must come after env setup
 from app import app as flask_app, limiter as flask_limiter  # noqa: E402
@@ -150,8 +150,8 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setattr(analytics_db, 'DATABASE_PATH', db_path)
     analytics_db.init_db()
 
-    # Remove any real API key so no OpenAI calls can escape.
-    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    # Remove any real API key so no Anthropic calls can escape.
+    monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     # Unset admin credentials so @require_admin passes through (dev-mode bypass).
     monkeypatch.delenv('ADMIN_USERNAME', raising=False)
     monkeypatch.delenv('ADMIN_PASSWORD', raising=False)
@@ -183,37 +183,41 @@ def client(app):
 
 
 # ---------------------------------------------------------------------------
-# OpenAI mock helpers
+# Anthropic mock helpers
 # ---------------------------------------------------------------------------
 
-def _openai_response(content: str) -> MagicMock:
-    """Construct a minimal object that mimics an OpenAI chat completion."""
+def _anthropic_response(text: str, stop_reason: str = 'end_turn') -> MagicMock:
+    """Construct a minimal object that mimics an Anthropic Messages API response:
+    a list of content blocks (here one text block) plus a stop_reason."""
+    block = MagicMock()
+    block.type = 'text'
+    block.text = text
     resp = MagicMock()
-    resp.choices = [MagicMock()]
-    resp.choices[0].message.content = content
+    resp.content = [block]
+    resp.stop_reason = stop_reason
     return resp
 
 
 @pytest.fixture
-def mock_openai(mocker):
+def mock_anthropic(mocker):
     """
-    Patch syllabus_checker.OpenAI so no network calls are made.
+    Patch llm.client.get_client so no network calls are made.
 
-    The fixture returns the mock *instance* (client), so tests can configure
-    ``mock_openai.chat.completions.create.return_value`` as needed.
+    The fixture returns the mock *client*, so tests can configure
+    ``mock_anthropic.messages.create.return_value`` as needed.
 
     Default response is an empty JSON object ``{}``.
     """
-    mock_cls = mocker.patch('syllabus_checker.OpenAI')
-    instance = mock_cls.return_value
-    instance.chat.completions.create.return_value = _openai_response('{}')
-    return instance
+    mock_get_client = mocker.patch('llm.client.get_client')
+    client = mock_get_client.return_value
+    client.messages.create.return_value = _anthropic_response('{}')
+    return client
 
 
 @pytest.fixture
-def mock_openai_metadata(mock_openai):
-    """Pre-configure mock_openai to return a plausible metadata JSON blob."""
-    mock_openai.chat.completions.create.return_value = _openai_response(
+def mock_anthropic_metadata(mock_anthropic):
+    """Pre-configure mock_anthropic to return a plausible metadata JSON blob."""
+    mock_anthropic.messages.create.return_value = _anthropic_response(
         '{"instructor_name": "Dr. Test Instructor", '
         '"department": "Computer Science", '
         '"course_subject": "CS", '
@@ -221,4 +225,4 @@ def mock_openai_metadata(mock_openai):
         '"course_title": "Introduction to Testing", '
         '"semester": "Fall 2025"}'
     )
-    return mock_openai
+    return mock_anthropic

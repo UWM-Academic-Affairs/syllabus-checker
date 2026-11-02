@@ -7,20 +7,16 @@ PatternsMixin — section/pattern detection methods for SyllabusChecker.
 import re
 import os
 import html
+import json
 from typing import List, Dict
-import sys
 from docx import Document
 from docx.oxml.ns import qn
 from _checker_types import AccessibilityIssue, ParagraphInfo
+from llm import client as llm_client
 
-
-def _get_openai():
-    """Return OpenAI class, resolving through syllabus_checker so mocks work."""
-    sc = sys.modules.get('syllabus_checker')
-    if sc is not None and hasattr(sc, 'OpenAI'):
-        return sc.OpenAI
-    from openai import OpenAI
-    return OpenAI
+# Output budget for the section-finder call: up to 13 {type, quote} entries plus
+# not_found names (~1k tokens), with headroom for Claude's adaptive thinking.
+SECTIONS_MAX_TOKENS = 4096
 
 
 class PatternsMixin:
@@ -1010,7 +1006,7 @@ class PatternsMixin:
         llm_text = full_text[:12000] if len(full_text) > 12000 else full_text
 
         # Get API key
-        api_key = os.environ.get('OPENAI_API_KEY')
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             # Use pattern-detected results, plus basic keyword matching for the rest
             missing_sections = self.check_missing_sections()
@@ -1038,7 +1034,7 @@ class PatternsMixin:
                             'description': self._get_section_description(s),
                             'recommendation': f'Add a "{s}" section to your syllabus'}
                            for s in actually_missing],
-                'error': 'OPENAI_API_KEY not set - using pattern matching + basic keyword matching'
+                'error': 'ANTHROPIC_API_KEY not set - using pattern matching + basic keyword matching'
             }
 
         # STEP 2: LLM analysis for nuanced content (only items not detected by patterns)
@@ -1047,7 +1043,7 @@ class PatternsMixin:
         llm_missing = []
 
         try:
-            client = _get_openai()(api_key=api_key)
+            client = llm_client.get_client(api_key)
 
             # Only ask LLM about items not already detected
             if remaining_to_check:
@@ -1083,24 +1079,43 @@ class PatternsMixin:
 
     Be generous - if content relates to the topic, include it in "found"."""
 
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Search the document and quote what you find. Be generous in matching."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=2000,
-                    temperature=0.1
+                # Schema from the fields read below: found[{type, quote}], not_found[str]
+                sections_schema = {
+                    'type': 'object',
+                    'properties': {
+                        'found': {
+                            'type': 'array',
+                            'items': {
+                                'type': 'object',
+                                'properties': {
+                                    'type': {'type': 'string', 'enum': remaining_to_check},
+                                    'quote': {'type': 'string'},
+                                },
+                                'required': ['type', 'quote'],
+                                'additionalProperties': False,
+                            },
+                        },
+                        'not_found': {'type': 'array', 'items': {'type': 'string', 'enum': remaining_to_check}},
+                    },
+                    'required': ['found', 'not_found'],
+                    'additionalProperties': False,
+                }
+
+                response = client.messages.create(
+                    model=llm_client.get_model(),
+                    system="Search the document and quote what you find. Be generous in matching.",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=SECTIONS_MAX_TOKENS,
+                    output_config=llm_client.json_output_config(sections_schema),
                 )
 
-                response_text = response.choices[0].message.content.strip()
+                response_text = llm_client.response_text(response, require_complete=True).strip()
                 if response_text.startswith('```'):
                     response_text = response_text.split('```')[1]
                     if response_text.startswith('json'):
                         response_text = response_text[4:]
                     response_text = response_text.strip()
 
-                import json
                 llm_result = json.loads(response_text)
 
                 # Process LLM findings

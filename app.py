@@ -74,7 +74,7 @@ def require_admin(f):
         )
     return decorated
 
-# Rate limiter — prevents abuse of the upload route (each request hits the OpenAI API)
+# Rate limiter — prevents abuse of the upload route (each request hits the Claude API)
 limiter = Limiter(
     get_remote_address,
     app=app,

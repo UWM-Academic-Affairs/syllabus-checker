@@ -33,9 +33,12 @@ def _make_checker(tmp_path_factory, name, builder_fn):
 
 
 def _llm_response(content: str) -> MagicMock:
+    block = MagicMock()
+    block.type = 'text'
+    block.text = content
     resp = MagicMock()
-    resp.choices = [MagicMock()]
-    resp.choices[0].message.content = content
+    resp.content = [block]
+    resp.stop_reason = 'end_turn'
     return resp
 
 
@@ -350,7 +353,7 @@ class TestCheckManualAlignment:
 
 
 # ---------------------------------------------------------------------------
-# analyze_sections_with_llm — LLM code path (requires mocked OpenAI)
+# analyze_sections_with_llm — LLM code path (requires mocked Anthropic client)
 # ---------------------------------------------------------------------------
 
 class TestAnalyzeSectionsWithLlmPath:
@@ -372,9 +375,9 @@ class TestAnalyzeSectionsWithLlmPath:
         return SyllabusChecker(template, str(fixture_dir / 'missing_sections.docx'))
 
     def test_llm_found_items_appear_in_present(self, checker, monkeypatch, mocker):
-        monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
-        mock_cls = mocker.patch('syllabus_checker.OpenAI')
-        mock_cls.return_value.chat.completions.create.return_value = (
+        monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+        mock_client = mocker.patch('llm.client.get_client').return_value
+        mock_client.messages.create.return_value = (
             _llm_response(self.LLM_JSON)
         )
 
@@ -386,9 +389,9 @@ class TestAnalyzeSectionsWithLlmPath:
         assert 'Welcome Statement' in present_types or 'Prerequisites' in present_types
 
     def test_llm_not_found_items_appear_in_missing(self, checker, monkeypatch, mocker):
-        monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
-        mock_cls = mocker.patch('syllabus_checker.OpenAI')
-        mock_cls.return_value.chat.completions.create.return_value = (
+        monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+        mock_client = mocker.patch('llm.client.get_client').return_value
+        mock_client.messages.create.return_value = (
             _llm_response(self.LLM_JSON)
         )
 
@@ -400,9 +403,9 @@ class TestAnalyzeSectionsWithLlmPath:
 
     def test_llm_exception_falls_back_gracefully(self, checker, monkeypatch, mocker):
         """If the LLM call raises, remaining items are marked as needing review."""
-        monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
-        mock_cls = mocker.patch('syllabus_checker.OpenAI')
-        mock_cls.return_value.chat.completions.create.side_effect = (
+        monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+        mock_client = mocker.patch('llm.client.get_client').return_value
+        mock_client.messages.create.side_effect = (
             RuntimeError('connection refused')
         )
 
@@ -413,9 +416,9 @@ class TestAnalyzeSectionsWithLlmPath:
 
     def test_llm_malformed_json_falls_back_gracefully(self, checker, monkeypatch, mocker):
         """Malformed JSON from LLM falls into the exception handler."""
-        monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
-        mock_cls = mocker.patch('syllabus_checker.OpenAI')
-        mock_cls.return_value.chat.completions.create.return_value = (
+        monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+        mock_client = mocker.patch('llm.client.get_client').return_value
+        mock_client.messages.create.return_value = (
             _llm_response('not valid JSON !!!')
         )
 
@@ -426,9 +429,9 @@ class TestAnalyzeSectionsWithLlmPath:
         assert 'missing' in result
 
     def test_returns_present_and_missing_keys(self, checker, monkeypatch, mocker):
-        monkeypatch.setenv('OPENAI_API_KEY', 'test-key')
-        mock_cls = mocker.patch('syllabus_checker.OpenAI')
-        mock_cls.return_value.chat.completions.create.return_value = (
+        monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key')
+        mock_client = mocker.patch('llm.client.get_client').return_value
+        mock_client.messages.create.return_value = (
             _llm_response(self.LLM_JSON)
         )
 

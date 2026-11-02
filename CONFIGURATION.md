@@ -21,10 +21,10 @@ the application logs a warning at startup.
 
 ---
 
-## Optional — OpenAI Features
+## Optional — Claude (Anthropic) Features
 
-### `OPENAI_API_KEY`
-Enables the three LLM-powered analysis features:
+### `ANTHROPIC_API_KEY`
+Enables the LLM-powered analysis features:
 
 | Feature | Route | Behavior without key |
 |---|---|---|
@@ -33,6 +33,9 @@ Enables the three LLM-powered analysis features:
 | Syllabus quality analysis | `POST /` (upload) | Returns `status: error`, skipped in marked doc |
 
 All 40+ rule-based accessibility checks run regardless of whether this key is set.
+
+### `CLAUDE_MODEL` / `CLAUDE_FAST_MODEL`
+Optional model overrides. `CLAUDE_MODEL` (default `claude-sonnet-5-5`) runs the growth-mindset, quality, image alt-text, and section analyses; `CLAUDE_FAST_MODEL` (default `claude-haiku-5-5`) runs course metadata extraction.
 
 ---
 
@@ -82,7 +85,7 @@ Password for HTTP Basic Auth on admin and restricted repository routes.
 ```dotenv
 FLASK_ENV=development
 SECRET_KEY=replace-me-with-a-real-secret
-OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 UPLOAD_FOLDER=/tmp/syllabus_checker_uploads
 REPO_FOLDER=/tmp/syllabus_checker_repository
 # ADMIN_USERNAME and ADMIN_PASSWORD intentionally omitted for local dev
@@ -92,7 +95,7 @@ REPO_FOLDER=/tmp/syllabus_checker_repository
 
 ```dotenv
 SECRET_KEY=<output of secrets.token_hex(32)>
-OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 UPLOAD_FOLDER=/var/www/syllabus-checker/uploads
 REPO_FOLDER=/var/www/syllabus-checker/repository
 ADMIN_USERNAME=admin

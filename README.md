@@ -91,7 +91,9 @@ See also [CONFIGURATION.md](CONFIGURATION.md) for full details and recommended v
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `SECRET_KEY` | **Yes (prod)** | insecure default | Flask session signing key. Generate with `python -c "import secrets; print(secrets.token_hex(32))"`. |
-| `OPENAI_API_KEY` | No | *(unset)* | Enables LLM-powered checks (metadata extraction, growth-mindset analysis, quality analysis). All checks still run without it. |
+| `ANTHROPIC_API_KEY` | No | *(unset)* | Enables LLM-powered checks (metadata extraction, growth-mindset analysis, quality analysis). All checks still run without it. |
+| `CLAUDE_MODEL` | No | `claude-sonnet-5-5` | Model for the deep analysis checks. |
+| `CLAUDE_FAST_MODEL` | No | `claude-haiku-5-5` | Model for course metadata extraction. |
 | `UPLOAD_FOLDER` | No | `/tmp/syllabus_checker_uploads` | Directory where uploaded `.docx` files are staged. Must be writable by the web process. |
 | `REPO_FOLDER` | No | `./repository` | Directory where saved syllabi are stored permanently. |
 | `ADMIN_USERNAME` | No | *(unset)* | HTTP Basic Auth username for `/admin/*` routes. Leave unset to disable auth (local dev). |

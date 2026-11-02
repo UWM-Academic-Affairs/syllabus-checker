@@ -5,21 +5,31 @@ LLMMixin — LLM-powered analysis methods for SyllabusChecker.
 """
 
 import os
-import sys
 import json
 from typing import Dict
 
+from llm import client as llm_client
 
-def _get_openai():
-    """Return OpenAI class, resolving through syllabus_checker so mocks work."""
-    # Tests patch 'syllabus_checker.OpenAI'; resolve through that module when
-    # available so that mocker.patch('syllabus_checker.OpenAI') still intercepts
-    # calls made from within these mixin methods.
-    sc = sys.modules.get('syllabus_checker')
-    if sc is not None and hasattr(sc, 'OpenAI'):
-        return sc.OpenAI
-    from openai import OpenAI
-    return OpenAI
+# JSON schema for extract_course_metadata (the six fields the prompt asks for).
+# Any field the model can't determine comes back as null.
+_NULLABLE_STR = {'type': ['string', 'null']}
+_METADATA_FIELDS = ['instructor_name', 'department', 'course_subject',
+                    'course_number', 'course_title', 'semester']
+METADATA_SCHEMA = {
+    'type': 'object',
+    'properties': {f: _NULLABLE_STR for f in _METADATA_FIELDS},
+    'required': _METADATA_FIELDS,
+    'additionalProperties': False,
+}
+
+# Output budgets. Claude's default adaptive thinking draws on the same budget as
+# the visible answer, so these leave room for reasoning on top of the output the
+# prompts ask for (6 sections with copy-paste text ~6k tokens; 4 sections ~4k;
+# alt-text report ~2k; metadata JSON ~150).
+GROWTH_MINDSET_MAX_TOKENS = 12000
+QUALITY_MAX_TOKENS = 8000
+ALT_TEXT_MAX_TOKENS = 4000
+METADATA_MAX_TOKENS = 1024
 
 
 class LLMMixin:
@@ -27,7 +37,7 @@ class LLMMixin:
 
     def analyze_growth_mindset_and_belonging(self) -> Dict[str, str]:
         """
-        Use OpenAI GPT API to analyze syllabus for growth mindset and belonging cues.
+        Use the Claude API to analyze syllabus for growth mindset and belonging cues.
         Returns a dictionary with analysis for each of the 6 core questions.
         """
         # Extract full syllabus text
@@ -43,15 +53,15 @@ class LLMMixin:
         full_text = "\n\n".join(syllabus_text)
 
         # Get API key from environment
-        api_key = os.environ.get('OPENAI_API_KEY')
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             return {
-                'error': 'OPENAI_API_KEY environment variable not set. Please configure your API key in .env file to enable growth mindset analysis.',
+                'error': 'ANTHROPIC_API_KEY environment variable not set. Please configure your API key in .env file to enable growth mindset analysis.',
                 'status': 'error'
             }
 
         try:
-            client = _get_openai()(api_key=api_key)
+            client = llm_client.get_client(api_key)
 
             # Create comprehensive prompt based on the provided guidance
             prompt = f"""You are an expert in educational equity and student-centered course design. Your task is to review a course syllabus and evaluate how well it communicates growth mindset and promotes student belonging.
@@ -149,25 +159,16 @@ class LLMMixin:
 
     Please provide a thorough, evidence-based analysis that will help the instructor improve their syllabus to better support all students, especially those from historically marginalized groups."""
 
-            # Call OpenAI API
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert in educational equity and student-centered course design, specializing in analyzing syllabi for growth mindset and belonging cues based on research from the Student Experience Project."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=4000,
-                temperature=0.7
+            # Call Claude API
+            response = client.messages.create(
+                model=llm_client.get_model(),
+                system="You are an expert in educational equity and student-centered course design, specializing in analyzing syllabi for growth mindset and belonging cues based on research from the Student Experience Project.",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=GROWTH_MINDSET_MAX_TOKENS,
             )
 
             # Extract the response text
-            analysis_text = response.choices[0].message.content
+            analysis_text = llm_client.response_text(response)
 
             return {
                 'analysis': analysis_text,
@@ -176,13 +177,13 @@ class LLMMixin:
 
         except Exception as e:
             return {
-                'error': f'Error calling OpenAI API: {str(e)}',
+                'error': f'Error calling Claude API: {str(e)}',
                 'status': 'error'
             }
 
     def analyze_syllabus_quality(self) -> Dict[str, str]:
         """
-        Use OpenAI GPT API to analyze syllabus for quality issues:
+        Use the Claude API to analyze syllabus for quality issues:
         - Undefined course terminology
         - Tone and inclusivity issues in policy language
         - Policies that may violate accessibility guidance or confuse students
@@ -192,15 +193,15 @@ class LLMMixin:
         full_text = self._document_to_structured_text()
 
         # Get API key from environment
-        api_key = os.environ.get('OPENAI_API_KEY')
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             return {
-                'error': 'OPENAI_API_KEY environment variable not set. Please configure your API key in .env file to enable quality analysis.',
+                'error': 'ANTHROPIC_API_KEY environment variable not set. Please configure your API key in .env file to enable quality analysis.',
                 'status': 'error'
             }
 
         try:
-            client = _get_openai()(api_key=api_key)
+            client = llm_client.get_client(api_key)
 
             prompt = f"""You are an expert in syllabus design, educational accessibility, and inclusive pedagogy. Analyze this course syllabus for quality and clarity issues across four key dimensions.
 
@@ -298,17 +299,14 @@ class LLMMixin:
     - DO NOT include a section on heading structure - that is covered separately in accessibility checks
     """
 
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are an expert in syllabus design, educational accessibility, and inclusive pedagogy. Provide specific, actionable feedback."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=3000,
-                temperature=0.2
+            response = client.messages.create(
+                model=llm_client.get_model(),
+                system="You are an expert in syllabus design, educational accessibility, and inclusive pedagogy. Provide specific, actionable feedback.",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=QUALITY_MAX_TOKENS,
             )
 
-            analysis_text = response.choices[0].message.content
+            analysis_text = llm_client.response_text(response)
 
             return {
                 'analysis': analysis_text,
@@ -317,13 +315,13 @@ class LLMMixin:
 
         except Exception as e:
             return {
-                'error': f'Error calling OpenAI API: {str(e)}',
+                'error': f'Error calling Claude API: {str(e)}',
                 'status': 'error'
             }
 
     def analyze_image_alt_text(self) -> Dict[str, str]:
         """
-        Use OpenAI GPT API to analyze image alt text quality:
+        Use the Claude API to analyze image alt text quality:
         - Flag institutional logos without meaningful alt text
         - Identify alt text that is too short, irrelevant, or redundant (e.g., "Image of...")
         """
@@ -381,15 +379,15 @@ class LLMMixin:
             }
 
         # Get API key from environment
-        api_key = os.environ.get('OPENAI_API_KEY')
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             return {
-                'error': 'OPENAI_API_KEY environment variable not set. Please configure your API key in .env file to enable image alt text analysis.',
+                'error': 'ANTHROPIC_API_KEY environment variable not set. Please configure your API key in .env file to enable image alt text analysis.',
                 'status': 'error'
             }
 
         try:
-            client = _get_openai()(api_key=api_key)
+            client = llm_client.get_client(api_key)
 
             # Format images data for the prompt
             images_list = []
@@ -452,17 +450,14 @@ class LLMMixin:
     - Remember: Good alt text is concise but informative, typically 1-2 sentences maximum
     """
 
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are an expert in web accessibility, WCAG guidelines, and alt text best practices. Provide specific, actionable feedback."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7
+            response = client.messages.create(
+                model=llm_client.get_model(),
+                system="You are an expert in web accessibility, WCAG guidelines, and alt text best practices. Provide specific, actionable feedback.",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=ALT_TEXT_MAX_TOKENS,
             )
 
-            analysis_text = response.choices[0].message.content
+            analysis_text = llm_client.response_text(response)
 
             return {
                 'analysis': analysis_text,
@@ -472,13 +467,13 @@ class LLMMixin:
 
         except Exception as e:
             return {
-                'error': f'Error calling OpenAI API: {str(e)}',
+                'error': f'Error calling Claude API: {str(e)}',
                 'status': 'error'
             }
 
     def extract_course_metadata(self) -> Dict[str, str]:
         """
-        Use OpenAI GPT API to extract course metadata from the syllabus.
+        Use the Claude API to extract course metadata from the syllabus.
         Returns instructor name, department, course subject, and course number.
         """
         # Extract first portion of syllabus text (metadata is usually at the top)
@@ -503,15 +498,15 @@ class LLMMixin:
             full_text = full_text[:4000]
 
         # Get API key from environment
-        api_key = os.environ.get('OPENAI_API_KEY')
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             return {
                 'status': 'error',
-                'error': 'OPENAI_API_KEY not set'
+                'error': 'ANTHROPIC_API_KEY not set'
             }
 
         try:
-            client = _get_openai()(api_key=api_key)
+            client = llm_client.get_client(api_key)
 
             prompt = f"""Extract the following information from this course syllabus. Return ONLY a JSON object with these exact keys. If a field cannot be determined, use null.
 
@@ -530,20 +525,19 @@ class LLMMixin:
     {{"instructor_name": "Dr. Jane Smith", "department": "Computer Science", "course_subject": "CS", "course_number": "101", "course_title": "Introduction to Programming", "semester": "Fall 2024"}}
     """
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",  # Use faster/cheaper model for simple extraction
-                messages=[
-                    {"role": "system", "content": "You are a data extraction assistant. Extract course metadata from syllabi and return only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=300,
-                temperature=0.1  # Low temperature for consistent extraction
+            response = client.messages.create(
+                model=llm_client.get_fast_model(),  # Faster/cheaper model for simple extraction
+                system="You are a data extraction assistant. Extract course metadata from syllabi and return only valid JSON.",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=METADATA_MAX_TOKENS,
+                output_config=llm_client.json_output_config(METADATA_SCHEMA),
             )
 
-            response_text = response.choices[0].message.content.strip()
+            response_text = llm_client.response_text(response, require_complete=True).strip()
 
             # Parse JSON response
-            # Clean up response if needed (remove markdown code blocks)
+            # Structured output is already plain JSON; this cleanup is a harmless safeguard
+            # (remove markdown code blocks)
             if response_text.startswith('```'):
                 response_text = response_text.split('```')[1]
                 if response_text.startswith('json'):

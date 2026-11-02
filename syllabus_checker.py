@@ -16,7 +16,6 @@ from docx import Document
 from docx.shared import RGBColor, Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from openai import OpenAI
 from constants import (
     COLOR_ACCESSIBILITY_HEX, COLOR_MISSING_HEX, COLOR_TONE_HEX, COLOR_QUALITY_HEX,
     COLOR_ACCESSIBILITY_TEXT, COLOR_MISSING_TEXT, COLOR_TONE_TEXT, COLOR_QUALITY_TEXT,
